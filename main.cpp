@@ -1,6 +1,5 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-// #include <SDL3/SDL_ttf.h>
 #include <cmath>
 #include <random>
 #include <iostream>
@@ -9,198 +8,147 @@ using namespace std;
 
 const float SIZE = 35;
 
-class Human
+// --- Drawing Body Parts --- //
+
+void SDL_RenderCircle(SDL_Renderer *renderer, float cx, float cy, float radius)
 {
+    int x = radius;
+    int y = 0;
+    int decision = 1 - x;
 
-    SDL_Renderer *renderer;
-
-    int sw = 0; // screen width
-    int sh = 0; // screen height
-
-    float BCPW = 0; // Body Center Point Width
-    float BCPH = 0; // Body Center Point Height
-
-    float NSP = 0; // Nick Start Point
-    float NEP = 0; // Nick End Point
-
-    float HLL = 0; // Hands & Legs Length
-
-    float RHAngle = 0; // Right Hand Angle
-    float LHAngle = 0; // Left Hand Angle
-
-    float LSP = 0; // Legs Start Point
-    float LEP = 0; // Legs End Point
-
-    float RLAngle = 0; // Right Leg Angle
-    float LLAngle = 0; // Left Leg Angle
-
-    bool debug = false;
-
-public:
-    Human(SDL_Renderer *renderer, int screenWidth, int screenHeight)
+    while (y <= x)
     {
-        this->renderer = renderer;
-        this->sw = screenWidth;
-        this->sh = screenHeight;
-    }
+        SDL_RenderPoint(renderer, cx + x, cy + y);
+        SDL_RenderPoint(renderer, cx + y, cy + x);
+        SDL_RenderPoint(renderer, cx - y, cy + x);
+        SDL_RenderPoint(renderer, cx - x, cy + y);
+        SDL_RenderPoint(renderer, cx - x, cy - y);
+        SDL_RenderPoint(renderer, cx - y, cy - x);
+        SDL_RenderPoint(renderer, cx + y, cy - x);
+        SDL_RenderPoint(renderer, cx + x, cy - y);
 
-private:
-    void SDL_RenderCircle(int cx, int cy, int radius)
-    {
-        int x = radius;
-        int y = 0;
-        int decision = 1 - x;
-
-        while (y <= x)
-        {
-            SDL_RenderPoint(renderer, cx + x, cy + y);
-            SDL_RenderPoint(renderer, cx + y, cy + x);
-            SDL_RenderPoint(renderer, cx - y, cy + x);
-            SDL_RenderPoint(renderer, cx - x, cy + y);
-            SDL_RenderPoint(renderer, cx - x, cy - y);
-            SDL_RenderPoint(renderer, cx - y, cy - x);
-            SDL_RenderPoint(renderer, cx + y, cy - x);
-            SDL_RenderPoint(renderer, cx + x, cy - y);
-
-            y++;
-            if (decision <= 0)
-                decision += 2 * y + 1;
-            else
-            {
-                x--;
-                decision += 2 * (y - x) + 1;
-            }
-        }
-    }
-
-    void head()
-    {
-        if (debug)
-            cout << "[head] BCPW: " << BCPW
-                 << " | BCPH: " << BCPH
-                 << " | SIZE: " << SIZE << endl;
-
-        SDL_RenderCircle(BCPW, BCPH, SIZE);
-    }
-
-    void nick()
-    {
-        if (debug)
-            cout << "[nick] BCPW: " << BCPW
-                 << " | NSP: " << NSP
-                 << " | NEP: " << NEP << endl;
-
-        SDL_RenderLine(renderer, BCPW, NSP, BCPW, NEP);
-    }
-
-    void Rhand()
-    {
-        if (debug)
-            cout << "[Rhand] BCPW: " << BCPW
-                 << " | NSP: " << NSP
-                 << " | RHAngle: " << RHAngle
-                 << " | HLL: " << HLL << endl;
-
-        SDL_RenderLine(renderer, BCPW, NSP, BCPW - RHAngle, HLL);
-    }
-
-    void Lhand()
-    {
-        if (debug)
-            cout << "[Lhand] BCPW: " << BCPW
-                 << " | BCPH: " << BCPH
-                 << " | SIZE: " << SIZE
-                 << " | LHAngle: " << LHAngle
-                 << " | HLL: " << HLL << endl;
-
-        SDL_RenderLine(renderer, BCPW, NSP, BCPW + LHAngle, HLL);
-    }
-
-    void RLeg()
-    {
-        if (debug)
-            cout << "[RLeg] BCPW: " << BCPW
-                 << " | LSP: " << LSP
-                 << " | RLAngle: " << RLAngle
-                 << " | LEP: " << LEP << endl;
-
-        SDL_RenderLine(renderer, BCPW, LSP, BCPW - RLAngle, LEP);
-    }
-
-    void LLeg()
-    {
-        if (debug)
-            cout << "[LLeg] BCPW: " << BCPW
-                 << " | LSP: " << LSP
-                 << " | LLAngle: " << LLAngle
-                 << " | LEP: " << LEP << endl;
-
-        SDL_RenderLine(renderer, BCPW, LSP, BCPW + LLAngle, LEP);
-    }
-
-public:
-    void setHuman(int mouseX, int mouseY, bool catchBody, bool releasedBody, float a, bool debug = false)
-    {
-
-        cout << "mouseY + a" << mouseY + a << endl;
-        if (catchBody)
-        {
-            this->BCPH = mouseY;
-            this->BCPW = mouseX;
-        }
-        else if (releasedBody)
-            this->BCPH = mouseY + a * 4;
+        y++;
+        if (decision <= 0)
+            decision += 2 * y + 1;
         else
         {
-            this->BCPH = sh * 0.75;
-            this->BCPW = sw / 2;
+            x--;
+            decision += 2 * (y - x) + 1;
         }
-
-        this->NSP = BCPH + SIZE;
-        this->NEP = BCPH + SIZE * 5;
-
-        this->HLL = BCPH + SIZE * 3;
-
-        this->RHAngle = 45;
-        this->LHAngle = 45;
-
-        this->LSP = BCPH + SIZE * 5;
-        this->LEP = HLL + SIZE * 5;
-
-        this->RLAngle = 30;
-        this->LLAngle = 30;
-
-        this->debug = debug;
-
-        if (debug)
-            cout << "\n\n--------------\n\n"
-                 << endl;
     }
-
-    void getHuman()
-    {
-        head();
-        nick();
-        Rhand();
-        Lhand();
-        RLeg();
-        LLeg();
-    }
-};
-
-bool isCaught(int mouseX, int mouseY, int sw, int sh)
-{
-    if (mouseY >= sh * 0.75 && mouseY <= sh)
-        return true;
-    return false;
 }
 
-float falling(int mouseY, int sh, int sec = 1)
+void head(SDL_Renderer *renderer, float BCPW, float BCPH, bool debug = false)
+{
+    if (debug)
+        cout << "[head] BCPW: " << BCPW
+             << " | BCPH: " << BCPH
+             << " | SIZE: " << SIZE << endl;
+
+    SDL_RenderCircle(renderer, BCPW, BCPH, SIZE);
+}
+
+void nick(SDL_Renderer *renderer, float BCPW, float NSP, float NEP, bool debug = false)
+{
+    if (debug)
+        cout << "[nick] BCPW: " << BCPW
+             << " | NSP: " << NSP
+             << " | NEP: " << NEP << endl;
+
+    SDL_RenderLine(renderer, BCPW, NSP, BCPW, NEP);
+}
+
+void Rhand(SDL_Renderer *renderer, float BCPW, float NSP, float RHAngle, float HLL, bool debug = false)
+{
+    if (debug)
+        cout << "[Rhand] BCPW: " << BCPW
+             << " | NSP: " << NSP
+             << " | RHAngle: " << RHAngle
+             << " | HLL: " << HLL << endl;
+
+    SDL_RenderLine(renderer, BCPW, NSP, BCPW - RHAngle, HLL);
+}
+
+void Lhand(SDL_Renderer *renderer, float BCPW, float BCPH, float NSP, float LHAngle, float HLL, bool debug = false)
+{
+    if (debug)
+        cout << "[Lhand] BCPW: " << BCPW
+             << " | BCPH: " << BCPH
+             << " | NSP: " << NSP
+             << " | LHAngle: " << LHAngle
+             << " | HLL: " << HLL << endl;
+
+    SDL_RenderLine(renderer, BCPW, NSP, BCPW + LHAngle, HLL);
+}
+
+void RLeg(SDL_Renderer *renderer, float BCPW, float LSP, float RLAngle, float LEP, bool debug = false)
+{
+    if (debug)
+        cout << "[RLeg] BCPW: " << BCPW
+             << " | LSP: " << LSP
+             << " | RLAngle: " << RLAngle
+             << " | LEP: " << LEP << endl;
+
+    SDL_RenderLine(renderer, BCPW, LSP, BCPW - RLAngle, LEP);
+}
+
+void LLeg(SDL_Renderer *renderer, float BCPW, float LSP, float LLAngle, float LEP, bool debug = false)
+{
+    if (debug)
+        cout << "[LLeg] BCPW: " << BCPW
+             << " | LSP: " << LSP
+             << " | LLAngle: " << LLAngle
+             << " | LEP: " << LEP << endl;
+
+    SDL_RenderLine(renderer, BCPW, LSP, BCPW + LLAngle, LEP);
+}
+
+// --- Body Functions --- //
+
+float calculateA(float sec = 1)
 {
     float a = 9.8 * sec;
-    cout << "a: " << a << endl;
-    return a;
+    // cout << "a: " << a << endl;
+    return a * 0.1;
 }
+
+bool isCaught(float mx, float my, SDL_FRect box)
+{
+    return (mx >= box.x && mx <= box.x + box.w &&
+            my >= box.y && my <= box.y + box.h);
+}
+
+SDL_FRect hitBox(SDL_Renderer *renderer, float BCPW, float BCPH, float RHAngle, float LHAngle, float LEP)
+{
+    float padding = 1;
+
+    float x = BCPW - RHAngle - padding;
+    float y = BCPH - SIZE - padding;
+    float w = BCPW + LHAngle - x + padding;
+    float h = LEP - y + padding;
+
+    SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255);
+    SDL_FRect box = {x, y, w, h};
+    SDL_RenderRect(renderer, &box);
+
+    return box;
+}
+
+// --- Set And Get Human --- //
+
+void getHuman(SDL_Renderer *renderer, float BCPW, float BCPH, float NSP, float NEP, float HLL,
+              float RHAngle, float LHAngle, float LSP, float LEP, float RLAngle, float LLAngle,
+              bool debug = false)
+{
+    head(renderer, BCPW, BCPH, debug);
+    nick(renderer, BCPW, NSP, NEP, debug);
+    Rhand(renderer, BCPW, NSP, RHAngle, HLL, debug);
+    Lhand(renderer, BCPW, BCPH, NSP, LHAngle, HLL, debug);
+    RLeg(renderer, BCPW, LSP, RLAngle, LEP, debug);
+    LLeg(renderer, BCPW, LSP, LLAngle, LEP, debug);
+}
+
+// --- Main Function --- //
 
 int main(int argc, char *argv[])
 {
@@ -235,6 +183,25 @@ int main(int argc, char *argv[])
     bool catchBody = false;
     bool releasedBody = false;
 
+    float BCPW = screenWidth / 2;     // Body Center Point Width
+    float BCPH = screenHeight * 0.75; // Body Center Point Height
+
+    float NSP = BCPH + SIZE;     // Nick Start Point
+    float NEP = BCPH + SIZE * 5; // Nick End Point
+
+    float HLL = BCPH + SIZE * 3; // Hands & Legs Length
+
+    float RHAngle = 45; // Right Hand Angle
+    float LHAngle = 45; // Left Hand Angle
+
+    float LSP = BCPH + SIZE * 5; // Legs Start Point
+    float LEP = HLL + SIZE * 5;  // Legs End Point
+
+    float RLAngle = 30; // Right Leg Angle
+    float LLAngle = 30; // Left Leg Angle
+
+    bool debug = false;
+
     float mouseX, mouseY;
     float lastMouseX, lastMouseY;
 
@@ -244,7 +211,7 @@ int main(int argc, char *argv[])
 
     // Init objs
     SDL_Event event;
-    Human human(renderer, screenWidth, screenHeight);
+    SDL_FRect box;
 
     // Main loop
     while (running)
@@ -261,19 +228,13 @@ int main(int argc, char *argv[])
             else if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE)
                 running = false;
 
-            // Mouse wheel
-            // else if (event.type == SDL_EVENT_MOUSE_WHEEL) {
-            //     if (event.wheel.y > 0 && SIZE < 35) SIZE += 5;
-            //     else if ( event.wheel.y < 0 && SIZE > 15) SIZE -=5;
-            // }
-
             // Left click
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
             {
                 if (event.button.button == SDL_BUTTON_LEFT)
                 {
-                    cout << "Down" << endl;
-                    catchBody = isCaught(mouseX, mouseY, screenWidth, screenHeight);
+                    // cout << "Down" << endl;
+                    catchBody = isCaught(mouseX, mouseY, box);
                     if (catchBody)
                         releasedBody = false;
                 }
@@ -282,43 +243,68 @@ int main(int argc, char *argv[])
             {
                 if (event.button.button == SDL_BUTTON_LEFT)
                 {
-                    cout << "Up" << endl;
-                    catchBody = false;
-                    releasedBody = true;
-                    lastMouseX = mouseX;
-                    lastMouseY = mouseY;
+                    if (catchBody)
+                    {
+                        catchBody = false;
+                        releasedBody = true;
+                        lastMouseX = mouseX;
+                        lastMouseY = mouseY;
+                        sec = 1;
+                    }
                 }
             }
         }
 
-        // ---  Time --- //
-        Uint32 currentTime = SDL_GetTicks();
-
-        // check if 1 second (1000 ms) passed
-        if (currentTime - lastTime >= 1000)
+        if (catchBody)
         {
-            sec++;
-            lastTime = currentTime; // reset the timer
+            BCPH = mouseY;
+            BCPW = mouseX;
         }
 
         if (releasedBody)
         {
-            a = falling(mouseY, screenHeight, sec);
-            // if (a >= 20)
-            //     break;
+            // ---  Time --- //
+            Uint32 currentTime = SDL_GetTicks();
+
+            // check if 1 second (1000 ms) passed
+            if (currentTime - lastTime >= 1000)
+            {
+                sec++;
+                lastTime = currentTime; // reset the timer
+            }
+
+            a = calculateA(sec);
+            BCPW = lastMouseX;
+            BCPH = lastMouseY + a;
+
+            lastMouseY = BCPH;
+
+            if (BCPH >= screenHeight * 0.75)
+                releasedBody = false;
         }
+
+        NSP = BCPH + SIZE;     // Nick Start Point
+        NEP = BCPH + SIZE * 5; // Nick End Point
+        HLL = BCPH + SIZE * 3; // Hands & Legs Length
+        RHAngle = 45;          // Right Hand Angle
+        LHAngle = 45;          // Left Hand Angle
+        LSP = BCPH + SIZE * 5; // Legs Start Point
+        LEP = HLL + SIZE * 5;  // Legs End Point
+        RLAngle = 30;          // Right Leg Angle
+        LLAngle = 30;          // Left Leg Angle
 
         // --- Drawing --- //
 
         // Background
-        SDL_SetRenderDrawColor(renderer, 0, 65, 99, 255);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
 
         // Human drawing
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
 
-        human.setHuman(mouseX, mouseY, catchBody, releasedBody, a);
-        human.getHuman();
+        // setHuman(mouseX, mouseY, lastMouseX, lastMouseY, catchBody, releasedBody, a);
+        getHuman(renderer, BCPW, BCPH, NSP, NEP, HLL, RHAngle, LHAngle, LSP, LEP, RLAngle, LLAngle, debug);
+        box = hitBox(renderer, BCPW, BCPH, RHAngle, LHAngle, LEP);
 
         // Display
         SDL_RenderPresent(renderer);
@@ -332,4 +318,5 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-// in falling: make last mouseY and mouseX
+// don't let the body go beyond the screen
+// make it fall slightly in the way of throwing
