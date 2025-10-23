@@ -108,7 +108,6 @@ void LLeg(SDL_Renderer *renderer, float BCPW, float LSP, float LLAngle, float LE
 float calculateA(float sec = 1)
 {
     float a = 9.8 * sec;
-    // cout << "a: " << a << endl;
     return a * 0.1;
 }
 
@@ -120,18 +119,32 @@ bool isCaught(float mx, float my, SDL_FRect box)
 
 SDL_FRect hitBox(SDL_Renderer *renderer, float BCPW, float BCPH, float RHAngle, float LHAngle, float LEP)
 {
-    float padding = 1;
+    float padding = 0;
 
     float x = BCPW - RHAngle - padding;
     float y = BCPH - SIZE - padding;
-    float w = BCPW + LHAngle - x + padding;
-    float h = LEP - y + padding;
+    float w = SIZE*2 + padding;
+    float h = SIZE*5 + padding;
 
     SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255);
     SDL_FRect box = {x, y, w, h};
     SDL_RenderRect(renderer, &box);
 
     return box;
+}
+
+void edgeCollide(int sw, int sh, float &BCPW, float &BCPH, float mouseX, float mouseY, SDL_FRect box)
+{
+
+    if (mouseX <= box.w / 2)
+        BCPW = box.w / 2;
+    else if (mouseX + box.w >= sw)
+        BCPW = sw - box.w / 2;
+
+    if (box.y <= 0)
+        BCPH += SIZE;
+    else if (box.y + box.h > sh)
+        BCPH = sh * 0.75;
 }
 
 // --- Set And Get Human --- //
@@ -283,6 +296,8 @@ int main(int argc, char *argv[])
                 releasedBody = false;
         }
 
+        // edgeCollide(screenWidth, screenHeight, BCPW, BCPH, mouseX, mouseY, box);
+
         NSP = BCPH + SIZE;     // Nick Start Point
         NEP = BCPH + SIZE * 5; // Nick End Point
         HLL = BCPH + SIZE * 3; // Hands & Legs Length
@@ -303,7 +318,7 @@ int main(int argc, char *argv[])
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
 
         // setHuman(mouseX, mouseY, lastMouseX, lastMouseY, catchBody, releasedBody, a);
-        getHuman(renderer, BCPW, BCPH, NSP, NEP, HLL, RHAngle, LHAngle, LSP, LEP, RLAngle, LLAngle, debug);
+        // getHuman(renderer, BCPW, BCPH, NSP, NEP, HLL, RHAngle, LHAngle, LSP, LEP, RLAngle, LLAngle, debug);
         box = hitBox(renderer, BCPW, BCPH, RHAngle, LHAngle, LEP);
 
         // Display
@@ -320,3 +335,4 @@ int main(int argc, char *argv[])
 
 // don't let the body go beyond the screen
 // make it fall slightly in the way of throwing
+// when releasedBody and mouseX only >= sw edgeCollid = True;
