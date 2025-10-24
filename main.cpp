@@ -1,12 +1,12 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <cmath>
-#include <random>
 #include <iostream>
 
 using namespace std;
 
 const float SIZE = 35;
+const float SPEED = 5;
 
 // --- Drawing Body Parts --- //
 
@@ -38,69 +38,69 @@ void SDL_RenderCircle(SDL_Renderer *renderer, float cx, float cy, float radius)
     }
 }
 
-void head(SDL_Renderer *renderer, float BCPW, float BCPH, bool debug = false)
+void head(SDL_Renderer *renderer, float HCP_X, float HCP_Y, bool debug = false)
 {
     if (debug)
-        cout << "[head] BCPW: " << BCPW
-             << " | BCPH: " << BCPH
+        cout << "[head] HCP_X: " << HCP_X
+             << " | HCP_Y: " << HCP_Y
              << " | SIZE: " << SIZE << endl;
 
-    SDL_RenderCircle(renderer, BCPW, BCPH, SIZE);
+    SDL_RenderCircle(renderer, HCP_X, HCP_Y, SIZE);
 }
 
-void nick(SDL_Renderer *renderer, float BCPW, float NSP, float NEP, bool debug = false)
+void nick(SDL_Renderer *renderer, float HCP_X, float NSP, float NEP, bool debug = false)
 {
     if (debug)
-        cout << "[nick] BCPW: " << BCPW
+        cout << "[nick] HCP_X: " << HCP_X
              << " | NSP: " << NSP
              << " | NEP: " << NEP << endl;
 
-    SDL_RenderLine(renderer, BCPW, NSP, BCPW, NEP);
+    SDL_RenderLine(renderer, HCP_X, NSP, HCP_X, NEP);
 }
 
-void Rhand(SDL_Renderer *renderer, float BCPW, float NSP, float RHAngle, float HLL, bool debug = false)
+void Rhand(SDL_Renderer *renderer, float HCP_X, float NSP, float RHAngle, float HLL, bool debug = false)
 {
     if (debug)
-        cout << "[Rhand] BCPW: " << BCPW
+        cout << "[Rhand] HCP_X: " << HCP_X
              << " | NSP: " << NSP
              << " | RHAngle: " << RHAngle
              << " | HLL: " << HLL << endl;
 
-    SDL_RenderLine(renderer, BCPW, NSP, BCPW - RHAngle, HLL);
+    SDL_RenderLine(renderer, HCP_X, NSP, HCP_X - RHAngle, HLL);
 }
 
-void Lhand(SDL_Renderer *renderer, float BCPW, float BCPH, float NSP, float LHAngle, float HLL, bool debug = false)
+void Lhand(SDL_Renderer *renderer, float HCP_X, float HCP_Y, float NSP, float LHAngle, float HLL, bool debug = false)
 {
     if (debug)
-        cout << "[Lhand] BCPW: " << BCPW
-             << " | BCPH: " << BCPH
+        cout << "[Lhand] HCP_X: " << HCP_X
+             << " | HCP_Y: " << HCP_Y
              << " | NSP: " << NSP
              << " | LHAngle: " << LHAngle
              << " | HLL: " << HLL << endl;
 
-    SDL_RenderLine(renderer, BCPW, NSP, BCPW + LHAngle, HLL);
+    SDL_RenderLine(renderer, HCP_X, NSP, HCP_X + LHAngle, HLL);
 }
 
-void RLeg(SDL_Renderer *renderer, float BCPW, float LSP, float RLAngle, float LEP, bool debug = false)
+void RLeg(SDL_Renderer *renderer, float HCP_X, float LSP, float RLAngle, float LEP, bool debug = false)
 {
     if (debug)
-        cout << "[RLeg] BCPW: " << BCPW
+        cout << "[RLeg] HCP_X: " << HCP_X
              << " | LSP: " << LSP
              << " | RLAngle: " << RLAngle
              << " | LEP: " << LEP << endl;
 
-    SDL_RenderLine(renderer, BCPW, LSP, BCPW - RLAngle, LEP);
+    SDL_RenderLine(renderer, HCP_X, LSP, HCP_X - RLAngle, LEP);
 }
 
-void LLeg(SDL_Renderer *renderer, float BCPW, float LSP, float LLAngle, float LEP, bool debug = false)
+void LLeg(SDL_Renderer *renderer, float HCP_X, float LSP, float LLAngle, float LEP, bool debug = false)
 {
     if (debug)
-        cout << "[LLeg] BCPW: " << BCPW
+        cout << "[LLeg] HCP_X: " << HCP_X
              << " | LSP: " << LSP
              << " | LLAngle: " << LLAngle
              << " | LEP: " << LEP << endl;
 
-    SDL_RenderLine(renderer, BCPW, LSP, BCPW + LLAngle, LEP);
+    SDL_RenderLine(renderer, HCP_X, LSP, HCP_X + LLAngle, LEP);
 }
 
 // --- Body Functions --- //
@@ -108,7 +108,7 @@ void LLeg(SDL_Renderer *renderer, float BCPW, float LSP, float LLAngle, float LE
 float calculateA(float sec = 1)
 {
     float a = 9.8 * sec;
-    return a * 0.1;
+    return (a * 0.01) * SPEED;
 }
 
 bool isCaught(float mx, float my, SDL_FRect box)
@@ -117,14 +117,14 @@ bool isCaught(float mx, float my, SDL_FRect box)
             my >= box.y && my <= box.y + box.h);
 }
 
-SDL_FRect hitBox(SDL_Renderer *renderer, float BCPW, float BCPH, float RHAngle, float LHAngle, float LEP)
+SDL_FRect hitBox(SDL_Renderer *renderer, float HCP_X, float HCP_Y, float RHAngle, float LHAngle, float LEP)
 {
-    float padding = 0;
+    float padding = 3;
 
-    float x = BCPW - RHAngle - padding;
-    float y = BCPH - SIZE - padding;
-    float w = SIZE*2 + padding;
-    float h = SIZE*5 + padding;
+    float x = HCP_X - RHAngle - padding;
+    float y = HCP_Y - SIZE - padding;
+    float w = (LHAngle + RHAngle) + padding * 2;
+    float h = LEP - y + padding;
 
     SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255);
     SDL_FRect box = {x, y, w, h};
@@ -133,133 +133,111 @@ SDL_FRect hitBox(SDL_Renderer *renderer, float BCPW, float BCPH, float RHAngle, 
     return box;
 }
 
-void edgeCollide(int sw, int sh, float &BCPW, float &BCPH, float mouseX, float mouseY, SDL_FRect box)
+// FIXED edgeCollide (works properly inside screen)
+void edgeCollide(float &HCP_X, float &HCP_Y, SDL_FRect box, SDL_FRect sb)
 {
+    // Left edge
+    if (box.x < sb.x)
+        HCP_X += (sb.x - box.x);
 
-    if (mouseX <= box.w / 2)
-        BCPW = box.w / 2;
-    else if (mouseX + box.w >= sw)
-        BCPW = sw - box.w / 2;
+    // Right edge
+    if (box.x + box.w > sb.x + sb.w)
+        HCP_X -= (box.x + box.w - (sb.x + sb.w));
 
-    if (box.y <= 0)
-        BCPH += SIZE;
-    else if (box.y + box.h > sh)
-        BCPH = sh * 0.75;
+    // Top edge
+    if (box.y < sb.y)
+        HCP_Y += (sb.y - box.y);
+
+    // Bottom edge
+    if (box.y + box.h > sb.y + sb.h)
+        HCP_Y -= (box.y + box.h - (sb.y + sb.h));
 }
 
 // --- Set And Get Human --- //
 
-void getHuman(SDL_Renderer *renderer, float BCPW, float BCPH, float NSP, float NEP, float HLL,
+void getHuman(SDL_Renderer *renderer, float HCP_X, float HCP_Y, float NSP, float NEP, float HLL,
               float RHAngle, float LHAngle, float LSP, float LEP, float RLAngle, float LLAngle,
               bool debug = false)
 {
-    head(renderer, BCPW, BCPH, debug);
-    nick(renderer, BCPW, NSP, NEP, debug);
-    Rhand(renderer, BCPW, NSP, RHAngle, HLL, debug);
-    Lhand(renderer, BCPW, BCPH, NSP, LHAngle, HLL, debug);
-    RLeg(renderer, BCPW, LSP, RLAngle, LEP, debug);
-    LLeg(renderer, BCPW, LSP, LLAngle, LEP, debug);
+    head(renderer, HCP_X, HCP_Y, debug);
+    nick(renderer, HCP_X, NSP, NEP, debug);
+    Rhand(renderer, HCP_X, NSP, RHAngle, HLL, debug);
+    Lhand(renderer, HCP_X, HCP_Y, NSP, LHAngle, HLL, debug);
+    RLeg(renderer, HCP_X, LSP, RLAngle, LEP, debug);
+    LLeg(renderer, HCP_X, LSP, LLAngle, LEP, debug);
 }
 
 // --- Main Function --- //
 
 int main(int argc, char *argv[])
 {
-    // Initialize SDL
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
         SDL_Log("SDL_Init failed: %s", SDL_GetError());
         return 1;
     }
 
-    //  Initialize Window & Renderer
     SDL_Window *window = SDL_CreateWindow("Human", 0, 0, SDL_WINDOW_FULLSCREEN);
     SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
 
-    if (!renderer)
-    {
-        SDL_Log("Renderer creation failed: %s", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    // Extracting the screen dimensions
     SDL_DisplayID displayID = SDL_GetPrimaryDisplay();
     const SDL_DisplayMode *mode = SDL_GetCurrentDisplayMode(displayID);
-
     const int screenWidth = mode->w;
     const int screenHeight = mode->h;
 
-    // Init variables
-    bool running = true;
-    bool catchBody = false;
-    bool releasedBody = false;
-
-    float BCPW = screenWidth / 2;     // Body Center Point Width
-    float BCPH = screenHeight * 0.75; // Body Center Point Height
-
-    float NSP = BCPH + SIZE;     // Nick Start Point
-    float NEP = BCPH + SIZE * 5; // Nick End Point
-
-    float HLL = BCPH + SIZE * 3; // Hands & Legs Length
-
-    float RHAngle = 45; // Right Hand Angle
-    float LHAngle = 45; // Left Hand Angle
-
-    float LSP = BCPH + SIZE * 5; // Legs Start Point
-    float LEP = HLL + SIZE * 5;  // Legs End Point
-
-    float RLAngle = 30; // Right Leg Angle
-    float LLAngle = 30; // Left Leg Angle
-
+    bool running = true, caught = false, falling = true, released = false;
+    float mouseX, mouseY, lastMouseX, lastMouseY;
     bool debug = false;
 
-    float mouseX, mouseY;
-    float lastMouseX, lastMouseY;
+    float HCP_X = screenWidth / 2;
+    float HCP_Y = screenHeight / 2 - SIZE * 4;
 
-    Uint32 lastTime = SDL_GetTicks(); // Start time
-    int sec = 1;
-    float a = 0.0f;
+    lastMouseX = HCP_X;
+    lastMouseY = HCP_Y;
 
-    // Init objs
+    float NSP = HCP_Y + SIZE;
+    float NEP = HCP_Y + SIZE * 5;
+    float HLL = HCP_Y + SIZE * 3;
+    float RHAngle = 45, LHAngle = 45;
+    float LSP = HCP_Y + SIZE * 5;
+    float LEP = HLL + SIZE * 5;
+    float RLAngle = 30, LLAngle = 30;
+
     SDL_Event event;
     SDL_FRect box;
+    SDL_FRect screensb = {0, 0, (float)screenWidth, (float)screenHeight};
 
-    // Main loop
+    Uint32 lastTime = SDL_GetTicks();
+    int sec = 1;
+    float a, sideA = 0.0f, afterReleasedSec = 0.0f;
+
     while (running)
     {
-        // Getting mouse x & y
         SDL_GetMouseState(&mouseX, &mouseY);
 
-        // --- Handle Events ---
         while (SDL_PollEvent(&event))
         {
-            // Close window
             if (event.type == SDL_EVENT_QUIT)
                 running = false;
             else if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE)
                 running = false;
-
-            // Left click
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
             {
                 if (event.button.button == SDL_BUTTON_LEFT)
                 {
-                    // cout << "Down" << endl;
-                    catchBody = isCaught(mouseX, mouseY, box);
-                    if (catchBody)
-                        releasedBody = false;
+                    caught = isCaught(mouseX, mouseY, box);
+                    if (caught)
+                        falling = false;
                 }
             }
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP)
             {
                 if (event.button.button == SDL_BUTTON_LEFT)
                 {
-                    if (catchBody)
+                    if (caught)
                     {
-                        catchBody = false;
-                        releasedBody = true;
+                        caught = false;
+                        falling = true;
                         lastMouseX = mouseX;
                         lastMouseY = mouseY;
                         sec = 1;
@@ -268,71 +246,66 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (catchBody)
+        if (caught)
         {
-            BCPH = mouseY;
-            BCPW = mouseX;
+            HCP_Y = mouseY;
+            HCP_X = mouseX;
         }
 
-        if (releasedBody)
-        {
-            // ---  Time --- //
-            Uint32 currentTime = SDL_GetTicks();
+        // if (released)
+        // {
 
-            // check if 1 second (1000 ms) passed
+        //     Uint32 currentTime = SDL_GetTicks();
+        //     if (currentTime - lastTime >= 100 && released)
+        //     {
+        //         sideA = lastMouseX - mouseX;
+        //         if (sideA > 0)
+        //         sideA /= a;
+        //         falling = true;
+        //         released = false;
+        //     }
+        // }
+
+        if (falling)
+        {
+            Uint32 currentTime = SDL_GetTicks();
             if (currentTime - lastTime >= 1000)
             {
                 sec++;
-                lastTime = currentTime; // reset the timer
+                lastTime = currentTime;
             }
-
             a = calculateA(sec);
-            BCPW = lastMouseX;
-            BCPH = lastMouseY + a;
 
-            lastMouseY = BCPH;
-
-            if (BCPH >= screenHeight * 0.75)
-                releasedBody = false;
+            HCP_X = lastMouseX - sideA;
+            HCP_Y = lastMouseY + a;
+            lastMouseY = HCP_Y;
+            if (HCP_Y >= screenHeight * 0.75)
+                falling = false;
         }
 
-        // edgeCollide(screenWidth, screenHeight, BCPW, BCPH, mouseX, mouseY, box);
-
-        NSP = BCPH + SIZE;     // Nick Start Point
-        NEP = BCPH + SIZE * 5; // Nick End Point
-        HLL = BCPH + SIZE * 3; // Hands & Legs Length
-        RHAngle = 45;          // Right Hand Angle
-        LHAngle = 45;          // Left Hand Angle
-        LSP = BCPH + SIZE * 5; // Legs Start Point
-        LEP = HLL + SIZE * 5;  // Legs End Point
-        RLAngle = 30;          // Right Leg Angle
-        LLAngle = 30;          // Left Leg Angle
-
-        // --- Drawing --- //
-
-        // Background
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
 
-        // Human drawing
+        box = hitBox(renderer, HCP_X, HCP_Y, RHAngle, LHAngle, LEP);
+        edgeCollide(HCP_X, HCP_Y, box, screensb);
+
+        NSP = HCP_Y + SIZE;
+        NEP = HCP_Y + SIZE * 5;
+        HLL = HCP_Y + SIZE * 3;
+        LSP = HCP_Y + SIZE * 5;
+        LEP = HLL + SIZE * 5;
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderRect(renderer, &screensb);
+
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        getHuman(renderer, HCP_X, HCP_Y, NSP, NEP, HLL, RHAngle, LHAngle, LSP, LEP, RLAngle, LLAngle, debug);
 
-        // setHuman(mouseX, mouseY, lastMouseX, lastMouseY, catchBody, releasedBody, a);
-        // getHuman(renderer, BCPW, BCPH, NSP, NEP, HLL, RHAngle, LHAngle, LSP, LEP, RLAngle, LLAngle, debug);
-        box = hitBox(renderer, BCPW, BCPH, RHAngle, LHAngle, LEP);
-
-        // Display
         SDL_RenderPresent(renderer);
     }
 
-    // --- Cleanup ---
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
     return 0;
 }
-
-// don't let the body go beyond the screen
-// make it fall slightly in the way of throwing
-// when releasedBody and mouseX only >= sw edgeCollid = True;
