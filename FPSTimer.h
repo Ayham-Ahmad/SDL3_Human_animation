@@ -1,3 +1,5 @@
+// code link: https://stackoverflow.com/questions/77744136/achieving-stable-60fps-with-sdl2
+
 #pragma once
 
 #include <chrono>
@@ -6,8 +8,9 @@
 #include <thread>
 #include <type_traits>
 
-template<std::intmax_t FPS>
-class Timer {
+template <std::intmax_t FPS>
+class Timer
+{
 public:
     // initialize Timer with the current time point:
     Timer() : tp{std::chrono::steady_clock::now()} {}
@@ -16,7 +19,8 @@ public:
     static constexpr std::chrono::duration<double, std::ratio<1, FPS>>
         time_between_frames{1};
 
-    void sleep() {
+    void sleep()
+    {
         // add to the stored time point
         tp += time_between_frames;
 
@@ -24,11 +28,14 @@ public:
         std::this_thread::sleep_until(tp - std::chrono::microseconds(100));
 
         // less than 100 microseconds busy wait
-        while(std::chrono::steady_clock::now() < tp) {}
+        while (std::chrono::steady_clock::now() < tp)
+        {
+        }
     }
 
 private:
     // the time point we'll add to in every loop
     std::chrono::time_point<std::chrono::steady_clock,
-                            std::remove_const_t<decltype(time_between_frames)>> tp;
+                            std::remove_const_t<decltype(time_between_frames)>>
+        tp;
 };
