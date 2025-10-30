@@ -2,113 +2,115 @@
 #include <SDL3/SDL_main.h>
 #include <cmath>
 #include <iostream>
+#include <vector>
+#include <unordered_map>
+
 #include "FPSTimer.h"
 
 using namespace std;
 
-const float SIZE = 35;
-const float SPEED = 1;
-const float PADDING = 1;
-const float MAX_VERTICAL_SPEED = 20;
-const float MAX_HORIZONTAL_SPEED = 20;
-// const float BODYHEIGHT = SIZE * 5; // From the HCP_Y to LEP
+const float SIZE = 200;
+const float MAX_VERTICAL_FORCE = 20;
+const float MAX_HORIZONTAL_FORCE = 20;
 
-// --- Drawing Body Parts --- //
+// Cache of precomputed circle points for each radius
+static std::unordered_map<int, std::vector<SDL_FPoint>> circleCache;
+
+// --- Drawing Player Parts --- //
 
 void SDL_RenderCircle(SDL_Renderer *renderer, float cx, float cy, float radius)
 {
-    int x = radius;
-    int y = 0;
-    int decision = 1 - x;
+    int r = static_cast<int>(radius);
 
-    while (y <= x)
+    // Check if circle points already cached
+    if (circleCache.find(r) == circleCache.end())
     {
-        SDL_RenderPoint(renderer, cx + x, cy + y);
-        SDL_RenderPoint(renderer, cx + y, cy + x);
-        SDL_RenderPoint(renderer, cx - y, cy + x);
-        SDL_RenderPoint(renderer, cx - x, cy + y);
-        SDL_RenderPoint(renderer, cx - x, cy - y);
-        SDL_RenderPoint(renderer, cx - y, cy - x);
-        SDL_RenderPoint(renderer, cx + y, cy - x);
-        SDL_RenderPoint(renderer, cx + x, cy - y);
+        std::vector<SDL_FPoint> points;
+        int x = r, y = 0, decision = 1 - x;
 
-        y++;
-        if (decision <= 0)
-            decision += 2 * y + 1;
-        else
+        while (y <= x)
         {
-            x--;
-            decision += 2 * (y - x) + 1;
+            points.push_back({(float)x, (float)y});
+            points.push_back({(float)y, (float)x});
+            points.push_back({(float)-y, (float)x});
+            points.push_back({(float)-x, (float)y});
+            points.push_back({(float)-x, (float)-y});
+            points.push_back({(float)-y, (float)-x});
+            points.push_back({(float)y, (float)-x});
+            points.push_back({(float)x, (float)-y});
+
+            y++;
+            if (decision <= 0)
+                decision += 2 * y + 1;
+            else
+                decision += 2 * (y - --x) + 1;
         }
+
+        circleCache[r] = std::move(points);
     }
+
+    // Draw using cached points
+    const auto &points = circleCache[r];
+    for (const auto &p : points)
+        SDL_RenderPoint(renderer, cx + p.x, cy + p.y);
 }
 
-void head(SDL_Renderer *renderer, float HCP_X, float HCP_Y, bool debug = false)
+inline void head(SDL_Renderer *r, float x, float y)
 {
-    if (debug)
-        cout << "[head] HCP_X: " << HCP_X
-             << " | HCP_Y: " << HCP_Y
-             << " | SIZE: " << SIZE << endl;
-
-    SDL_RenderCircle(renderer, HCP_X, HCP_Y, SIZE);
+    SDL_RenderCircle(r, x, y, SIZE / 7);
 }
 
-void nick(SDL_Renderer *renderer, float HCP_X, float NSP, float NEP, bool debug = false)
+inline void nick(SDL_Renderer *r, float x, float y1, float y2)
 {
-    if (debug)
-        cout << "[nick] HCP_X: " << HCP_X
-             << " | NSP: " << NSP
-             << " | NEP: " << NEP << endl;
-
-    SDL_RenderLine(renderer, HCP_X, NSP, HCP_X, NEP);
+    SDL_RenderLine(r, x, y1, x, y2);
 }
 
-void Rhand(SDL_Renderer *renderer, float HCP_X, float NSP, float RHAngle, float HLL, bool debug = false)
+void body(SDL_Renderer *renderer, float x1, float y1, float x2, float y2)
 {
-    if (debug)
-        cout << "[Rhand] HCP_X: " << HCP_X
-             << " | NSP: " << NSP
-             << " | RHAngle: " << RHAngle
-             << " | HLL: " << HLL << endl;
-
-    SDL_RenderLine(renderer, HCP_X, NSP, HCP_X - RHAngle, HLL);
+    SDL_RenderLine(renderer, x1, y1, x2, y2);
 }
 
-void Lhand(SDL_Renderer *renderer, float HCP_X, float HCP_Y, float NSP, float LHAngle, float HLL, bool debug = false)
+inline void limb(SDL_Renderer *r, float x, float y, float angle, float length, bool rightSide)
 {
-    if (debug)
-        cout << "[Lhand] HCP_X: " << HCP_X
-             << " | HCP_Y: " << HCP_Y
-             << " | NSP: " << NSP
-             << " | LHAngle: " << LHAngle
-             << " | HLL: " << HLL << endl;
-
-    SDL_RenderLine(renderer, HCP_X, NSP, HCP_X + LHAngle, HLL);
+    float x2 = rightSide ? x + angle : x - angle;
+    SDL_RenderLine(r, x, y, x2, y + length);
 }
 
-void RLeg(SDL_Renderer *renderer, float HCP_X, float LSP, float RLAngle, float LEP, bool debug = false)
+// --- Player Classes --- //
+
+class Player
 {
-    if (debug)
-        cout << "[RLeg] HCP_X: " << HCP_X
-             << " | LSP: " << LSP
-             << " | RLAngle: " << RLAngle
-             << " | LEP: " << LEP << endl;
+public:
+    float screenWidth;
+    float screenHeight;
 
-    SDL_RenderLine(renderer, HCP_X, LSP, HCP_X - RLAngle, LEP);
-}
+    float X, Y;
+    float H, W;
+    float top, bottom, right, left;
 
-void LLeg(SDL_Renderer *renderer, float HCP_X, float LSP, float LLAngle, float LEP, bool debug = false)
-{
-    if (debug)
-        cout << "[LLeg] HCP_X: " << HCP_X
-             << " | LSP: " << LSP
-             << " | LLAngle: " << LLAngle
-             << " | LEP: " << LEP << endl;
+    Player(float screenW, float screenH, float size = SIZE)
+        : screenWidth(screenW), screenHeight(screenH), H(size), W(size / 2.0f)
+    {
+        X = screenWidth / 2.0f;
+        Y = screenHeight / 2.0f;
+        updateEdges();
+    }
 
-    SDL_RenderLine(renderer, HCP_X, LSP, HCP_X + LLAngle, LEP);
-}
+    void updateEdges()
+    {
+        top = Y - H / 2;
+        bottom = Y + H / 2;
+        right = X + W / 2;
+        left = X - W / 2;
+    }
 
-// --- Body Classes --- //
+    void setPosition(float x, float y)
+    {
+        X = x;
+        Y = y;
+        updateEdges();
+    }
+};
 
 class Collide
 {
@@ -117,20 +119,24 @@ public:
     bool collideTop = false;
     bool collideRight = false;
     bool collideLeft = false;
+
+    void reset()
+    {
+        collideBottom = false;
+        collideTop = false;
+        collideRight = false;
+        collideLeft = false;
+    }
 };
 
 class ThrownDir
 {
 public:
-    bool right, left = false;
+    bool right = false;
+    bool left = false;
 };
-// --- Body Functions --- //
 
-float calculateAcceleration(float sec = 1)
-{
-    float a = 9.8 * sec;
-    return (a * 0.01) * SPEED;
-}
+// --- Utility Functions --- //
 
 bool isCaught(float mx, float my, SDL_FRect box)
 {
@@ -138,134 +144,120 @@ bool isCaught(float mx, float my, SDL_FRect box)
             my >= box.y && my <= box.y + box.h);
 }
 
-SDL_FRect hitBox(SDL_Renderer *renderer, float HCP_X, float HCP_Y, float RHAngle, float LHAngle, float LEP, bool showHitBox = false)
+void edgeCollision(float &HX, float &HY, const SDL_FRect &box, const SDL_FRect &sb, Collide &c)
 {
-    float x = HCP_X - RHAngle - PADDING;
-    float y = HCP_Y - SIZE - PADDING;
-    float w = (LHAngle + RHAngle) + PADDING * 2;
-    float h = LEP - y + PADDING;
-
-    SDL_SetRenderDrawColor(renderer, 0, 100, 0, 255);
-    SDL_FRect box = {x, y, w, h};
-
-    if (showHitBox)
-        SDL_RenderRect(renderer, &box);
-
-    return box;
-}
-
-void edgeCollision(float &HCP_X, float &HCP_Y, SDL_FRect box, SDL_FRect sb, Collide &collideChecker)
-{
-
-    // Right edge
-    if (box.x + box.w > sb.x + sb.w)
+    if (box.x + box.w > sb.w)
     {
-        HCP_X -= (box.x + box.w - (sb.x + sb.w));
-        collideChecker.collideRight = true;
+        HX -= (box.x + box.w - sb.w);
+        c.collideRight = true;
     }
-
-    // Left edge
     if (box.x < sb.x)
     {
-        HCP_X += (sb.x - box.x);
-        collideChecker.collideLeft = true;
+        HX += (sb.x - box.x);
+        c.collideLeft = true;
     }
-
-    // Top edge
     if (box.y < sb.y)
     {
-        HCP_Y += (sb.y - box.y);
-        collideChecker.collideTop = true;
+        HY += (sb.y - box.y);
+        c.collideTop = true;
     }
-
-    // Bottom edge
-    if (box.y + box.h > sb.y + sb.h)
+    if (box.y + box.h > sb.h)
     {
-        HCP_Y -= (box.y + box.h - (sb.y + sb.h));
-        // cout << "Inside edgeCollision: HCP_Y = " << HCP_Y << endl;
-        collideChecker.collideBottom = true;
+        HY -= (box.y + box.h - sb.h);
+        c.collideBottom = true;
     }
 }
 
 float clamp(float value, float minVal, float maxVal)
 {
-    if (value < minVal)
-        return minVal;
-    if (value > maxVal)
-        return maxVal;
-    return value;
+    return (value < minVal) ? minVal : (value > maxVal) ? maxVal
+                                                        : value;
 }
 
-void fall(float &HCP_X, float &HCP_Y, float &vx, float &vy, float gravity, ThrownDir &thrownDir, Collide &collideChecker, bool &falling, SDL_FRect box, SDL_FRect sb)
-{
-    vy += gravity; // apply gravity
-    float remaining = abs(box.y + box.h - sb.h);
+// --- Motion Logic --- //
 
-    // horizontal motion
-    if ((thrownDir.right || thrownDir.left) & !(collideChecker.collideLeft || collideChecker.collideRight))
-    {
-        HCP_X += vx;
-    }
-    else if (collideChecker.collideLeft || collideChecker.collideRight)
+void fall(Player &player, float &vy, float gravity, ThrownDir &dir,
+          Collide &col, bool &falling, float &vx, const SDL_FRect &box, const SDL_FRect &sb)
+{
+    vy += gravity;
+    float remaining = sb.h - (box.y + box.h);
+
+    if ((dir.right || dir.left) && !(col.collideLeft || col.collideRight))
+        player.X += vx;
+    else if (col.collideLeft || col.collideRight)
         vx = 0;
 
-    // vertical motion
-    if (collideChecker.collideTop)
-        vy = abs(vy);
-    else if (remaining < vy){
-        vy = remaining - 1;
-        cout <<  "remaining: " << remaining << endl;
-        collideChecker.collideBottom = true;
+    if (col.collideTop)
+        vy = fabs(vy);
+    else if (remaining < vy)
+    {
+        vy = remaining;
+        col.collideBottom = true;
     }
 
-    cout << vy << endl;
-    // cout << remaining << endl;
+    player.Y += vy;
 
-    HCP_Y += vy;
-
-    cout << "HCP_Y: " << HCP_Y << endl;
-
-    // cout << "Inside falling: HCP_Y = " << HCP_Y << " " << vy << endl;
-
-    // Collision with ground
-    if (collideChecker.collideBottom)
+    if (col.collideBottom)
     {
         falling = false;
-        vy = 0;
-        vx = 0;
-        thrownDir = ThrownDir();
-        cout << "floor: HCP_Y => " << HCP_Y << endl;
+        vy = vx = 0;
+        dir = ThrownDir();
     }
 }
 
-// --- Set And Get Human --- //
-
-void stand(float HCP_Y, float &NSP, float &NEP, float &HLL, float &LSP, float &LEP)
+void throwDir(Uint32 &releaseTime, float &mouseX_after, float &mouseY, float lastX,
+              float lastY, ThrownDir &dir, float &vx, float &vy, float gravity,
+              bool &checkThrow, bool &falling)
 {
-    NSP = HCP_Y + SIZE;
-    NEP = HCP_Y + SIZE * 5;
-    HLL = HCP_Y + SIZE * 3;
-    LSP = HCP_Y + SIZE * 5;
-    LEP = HLL + SIZE * 5;
+    if (SDL_GetTicks() - releaseTime < 10)
+        return;
+
+    SDL_GetMouseState(&mouseX_after, &mouseY);
+    float deltaX = mouseX_after - lastX;
+    float deltaY = mouseY - lastY;
+
+    dir.right = deltaX > 0;
+    dir.left = deltaX < 0;
+
+    vx = clamp(deltaX * gravity, -MAX_HORIZONTAL_FORCE, MAX_HORIZONTAL_FORCE);
+    vy = clamp(deltaY * gravity, -MAX_VERTICAL_FORCE, MAX_VERTICAL_FORCE);
+
+    checkThrow = false;
+    falling = true;
 }
 
-void getHuman(SDL_Renderer *renderer, float HCP_X, float HCP_Y, float NSP, float NEP, float HLL,
-              float RHAngle, float LHAngle, float LSP, float LEP, float RLAngle, float LLAngle,
-              bool debug = false)
+// --- Drawing Human --- //
+
+void stand(Player &p, float &HY, float &NSP, float &NEP, float &HLL,
+           float &RHAngle, float &LHAngle, float &RLAngle, float &LLAngle, float &BEP)
 {
-    head(renderer, HCP_X, HCP_Y, debug);
-    nick(renderer, HCP_X, NSP, NEP, debug);
-    Rhand(renderer, HCP_X, NSP, RHAngle, HLL, debug);
-    Lhand(renderer, HCP_X, HCP_Y, NSP, LHAngle, HLL, debug);
-    RLeg(renderer, HCP_X, LSP, RLAngle, LEP, debug);
-    LLeg(renderer, HCP_X, LSP, LLAngle, LEP, debug);
+    HY = p.Y - p.H * 0.35f;  // Head Y center, slightly above middle
+    NSP = HY + p.H * 0.15f;  // Neck start (below head)
+    NEP = NSP + p.H * 0.1f;  // Neck end (joins torso)
+    BEP = NEP + p.H * 0.35f; // Bottom of torso
+    HLL = p.H * 0.2f;        // Limb length proportion (arms & legs)
+
+    RHAngle = LHAngle = 45.0f; // Arms angled outward
+    RLAngle = LLAngle = 30.0f; // Legs angled downward
+}
+
+void getHuman(SDL_Renderer *r, const Player &p, float HY, float NSP, float NEP, float HLL,
+              float RHAngle, float LHAngle, float BEP, float RLAngle, float LLAngle)
+{
+    head(r, p.X, HY);
+    nick(r, p.X, NSP, NEP);
+    limb(r, p.X, NEP, RHAngle, HLL, false);
+    limb(r, p.X, NEP, LHAngle, HLL, true);
+    body(r, p.X, NEP, p.X, BEP);
+    limb(r, p.X, BEP, RLAngle, HLL + 8, false);
+    limb(r, p.X, BEP, LLAngle, HLL + 8, true);
 }
 
 // --- Main Function --- //
 
 int main(int argc, char *argv[])
 {
-    if (!SDL_Init(SDL_INIT_VIDEO))
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         SDL_Log("SDL_Init failed: %s", SDL_GetError());
         return 1;
@@ -279,41 +271,36 @@ int main(int argc, char *argv[])
     const int screenWidth = mode->w;
     const int screenHeight = mode->h;
 
+    Player player(screenWidth, screenHeight);
+    SDL_FRect hitbox = {player.left, player.top, player.W, player.H};
+
     bool running = true, caught = false, falling = true, checkThrowDir = false;
-    float mouseX, mouseY, mouseX_after100ms;
-    bool debug = false;
+    float mouseX, mouseY, mouseX_after;
+    float lastMouseX = player.X, lastMouseY = player.Y;
 
-    float HCP_X = screenWidth / 2;
-    float HCP_Y = screenHeight / 2 - SIZE * 4;
+    float HY;      // Head Y position (center of the head)
+    float NSP;     // Neck Start Point (where neck begins, below head)
+    float NEP;     // Neck End Point (where neck ends, top of body)
+    float HLL;     // Half Limb Length (used for arms and legs)
+    float RHAngle; // Right Hand Angle (arm spread angle)
+    float LHAngle; // Left Hand Angle
+    float RLAngle; // Right Leg Angle
+    float LLAngle; // Left Leg Angle
+    float BEP;     // Body End Point (bottom of torso)
 
-    // cout << "Outside the main: HCP_Y = " << HCP_Y << endl;
+    stand(player, HY, NSP, NEP, HLL, RHAngle, LHAngle, RLAngle, LLAngle, BEP);
 
-    float lastMouseX = HCP_X;
-    float lastMouseY = HCP_Y;
-
-    float NSP = HCP_Y + SIZE;
-    float NEP = HCP_Y + SIZE * 5;
-    float HLL = HCP_Y + SIZE * 3;
-    float RHAngle = 45, LHAngle = 45;
-    float LSP = HCP_Y + SIZE * 5;
-    float LEP = HLL + SIZE * 5;
-    float RLAngle = 30, LLAngle = 30;
-
-    float vx = 0.0f, vy = 0.0f;
-    float gravity = 0.5f;
+    float vx = 0.0f, vy = 0.0f, gravity = 0.5f;
 
     SDL_Event event;
-    SDL_FRect box;
-    SDL_FRect screensb = {0, 0, (float)screenWidth, (float)screenHeight};
+    SDL_FRect screenBox = {0, 0, (float)screenWidth, (float)screenHeight};
+
     Collide collideChecker;
     ThrownDir thrownDir;
 
-    Uint32 lastTime, releaseTime, lastUpdate = SDL_GetTicks();
+    Uint32 releaseTime = 0;
 
-    int sec = 1;
-    float a, sideA = 0.0f;
-
-    Timer<60> timer; // for 60 FPS
+    Timer<60> timer; // 60 FPS limiter
 
     while (running)
     {
@@ -325,120 +312,57 @@ int main(int argc, char *argv[])
                 running = false;
             else if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE)
                 running = false;
-            else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+            else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT)
             {
-                if (event.button.button == SDL_BUTTON_LEFT)
-                {
-                    caught = isCaught(mouseX, mouseY, box);
-                    if (caught)
-                        falling = false;
-                }
+                caught = isCaught(mouseX, mouseY, hitbox);
+                if (caught)
+                    falling = false;
             }
-            else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP)
+            else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT)
             {
-                if (event.button.button == SDL_BUTTON_LEFT)
+                if (caught)
                 {
-                    if (caught)
-                    {
-                        caught = false;
-                        checkThrowDir = true;
-
-                        lastMouseX = mouseX;
-                        lastMouseY = mouseY;
-                        sec = 1;
-                    }
+                    caught = false;
+                    checkThrowDir = true;
+                    releaseTime = SDL_GetTicks();
+                    lastMouseX = mouseX;
+                    lastMouseY = mouseY;
                 }
             }
         }
 
         if (caught)
         {
-            HCP_Y = mouseY;
-            HCP_X = mouseX;
+            player.setPosition(mouseX, mouseY);
             vx = vy = 0;
         }
 
         if (checkThrowDir)
-        {
-            Uint32 now = SDL_GetTicks();
-            if (now - releaseTime >= 10) // 100ms passed
-            {
-                SDL_GetMouseState(&mouseX_after100ms, &mouseY);
-
-                float deltaX = mouseX_after100ms - lastMouseX;
-                // cout << mouseX_after100ms << " - " << lastMouseX << " = " << deltaX << endl;
-
-                if (deltaX > 0)
-                {
-                    thrownDir.right = true;
-                    // cout << "Thrown to the RIGHT\n";
-                }
-                else if (deltaX < 0)
-                {
-                    thrownDir.left = true;
-                    // cout << "Thrown to the LEFT\n";
-                }
-                else
-                    thrownDir = ThrownDir();
-
-                // Compute throw velocity based on recent mouse movement
-                vx = deltaX * gravity;                // horizontal velocity
-                vy = (mouseY - lastMouseY) * gravity; // vertical velocity
-                // cout << vx << " " << vy << endl;
-
-                vx = clamp(vx, -MAX_HORIZONTAL_SPEED, MAX_HORIZONTAL_SPEED);
-                vy = clamp(vy, -MAX_VERTICAL_SPEED, MAX_VERTICAL_SPEED);
-                // cout << vx << " " << vy << endl;
-
-                checkThrowDir = false;
-                falling = true;
-                sideA = deltaX / 100;
-                // cout << sideA << endl;
-            }
-        }
+            throwDir(releaseTime, mouseX_after, mouseY, lastMouseX, lastMouseY, thrownDir, vx, vy, gravity, checkThrowDir, falling);
 
         if (falling)
-        {
-            fall(HCP_X, HCP_Y, vx, vy, gravity, thrownDir, collideChecker, falling, box, screensb);
-        }
+            fall(player, vy, gravity, thrownDir, collideChecker, falling, vx, hitbox, screenBox);
 
-        // cout << HCP_X << endl;
-        // cout << HCP_Y << endl;
-
-        // Render BG
+        // --- Rendering ---
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
 
-        // Reset
-        collideChecker = Collide();
+        collideChecker.reset();
 
-        // Create Hit Box
-        box = hitBox(renderer, HCP_X, HCP_Y, RHAngle, LHAngle, LEP);
+        player.updateEdges();
 
-        // for size = 35
-        cout << box.y + box.h << endl; // 1080 = sw
-        cout << box.y << endl; // 763
-        cout << HCP_Y << endl; // 799
-        cout << box.y + box.h - HCP_Y << endl; // 281
+        hitbox = {player.left, player.top, player.W, player.H};
+        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        SDL_RenderRect(renderer, &hitbox);
 
-        // Check Edge Collision
-        edgeCollision(HCP_X, HCP_Y, box, screensb, collideChecker);
+        edgeCollision(player.X, player.Y, hitbox, screenBox, collideChecker);
 
-        // Get Body Status
-        stand(HCP_Y, NSP, NEP, HLL, LSP, LEP);
+        stand(player, HY, NSP, NEP, HLL, RHAngle, LHAngle, RLAngle, LLAngle, BEP);
 
-        // Create screen Boundary
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderRect(renderer, &screensb);
-
-        // Render Body
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        getHuman(renderer, HCP_X, HCP_Y, NSP, NEP, HLL, RHAngle, LHAngle, LSP, LEP, RLAngle, LLAngle, debug);
+        getHuman(renderer, player, HY, NSP, NEP, HLL, RHAngle, LHAngle, BEP, RLAngle, LLAngle);
 
-        // Display
         SDL_RenderPresent(renderer);
-
-        // Sleep the rest of the time
         timer.sleep();
     }
 
