@@ -6,17 +6,21 @@
 #include <unordered_map>
 
 #include "FPSTimer.h"
-#include "Player.h"
+#include "player.h"
 #include "Utility.h"
 #include "Motion.h"
+#include "Weapons.h"
 
 using namespace std;
+
+#define M_PI 3.14159265358979323846
 
 const float moveSpeed = 10.0f;
 const float WALL_GRAB_FORCE = -0.4f;
 const int JUMP_COUNT = 2;
 const float GRAVITY = 0.5f;
-const float SIZE  = 200.0f;
+const float SIZE = 200.0f;
+const int BULLET_SPEED = 5;
 
 int SDL_main(int argc, char *argv[])
 {
@@ -35,24 +39,12 @@ int SDL_main(int argc, char *argv[])
     const int screenHeight = mode->h;
 
     Player player(screenWidth, screenHeight, GRAVITY, SIZE);
-    SDL_FRect hitbox = {player.left, player.top, player.W, player.H};
+    SDL_FRect hitbox = {player.left, player.top, player.w, player.h};
 
     bool running = true, caught = false, falling = true, checkThrowDir = false, isWallSliding = false;
     float mouseX = 0, mouseY = 0, mouseX_after = 0;
-    float lastMouseX = player.X, lastMouseY = player.Y;
+    float lastMouseX = player.x, lastMouseY = player.y;
     int jumps = JUMP_COUNT;
-
-    float HY;      // Head Y position
-    float NSP;     // Neck start
-    float NEP;     // Neck end
-    float HLL;     // limb length
-    float RHAngle; // right hand angle
-    float LHAngle; // left hand angle
-    float RLAngle; // right leg angle
-    float LLAngle; // left leg angle
-    float BEP;     // body end point
-
-    stand(player, HY, NSP, NEP, HLL, RHAngle, LHAngle, RLAngle, LLAngle, BEP);
 
     float vx = 0.0f, vy = 0.0f;
 
@@ -61,9 +53,18 @@ int SDL_main(int argc, char *argv[])
 
     Collide collideChecker;
     ThrownDir thrownDir;
+    Weapon weapon;
 
     Uint32 releaseTime = 0;
     Uint64 wallSlideStartTime = 0;
+
+    struct Shot
+    {
+        SDL_FPoint start;
+        SDL_FPoint end;
+    };
+
+    vector<Shot> shots;
 
     Timer<60> timer; // 60 FPS limiter
 
@@ -95,9 +96,16 @@ int SDL_main(int argc, char *argv[])
 
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT)
             {
-                caught = isCaught(mouseX, mouseY, hitbox);
+                // caught = isCaught(mouseX, mouseY, hitbox);
                 if (caught)
                     falling = false;
+
+                Shot s;
+                s.start.x = player.x;
+                s.start.y = player.NEP;
+                s.end.x = mouseX;
+                s.end.y = mouseY;
+                shots.push_back(s);
             }
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT)
             {
@@ -115,44 +123,16 @@ int SDL_main(int argc, char *argv[])
         const bool *state = SDL_GetKeyboardState(NULL);
 
         if (state[SDL_SCANCODE_A] && player.left != screenBox.x)
-            player.X -= moveSpeed;
+            player.x -= moveSpeed;
         if (state[SDL_SCANCODE_D] && player.right != screenBox.w)
-            player.X += moveSpeed;
+            player.x += moveSpeed;
 
         // update edges before collision check
         player.updateEdges();
 
         edgeCollision(player, screenBox, collideChecker);
 
-        // wall slide detection (touching left or right wall AND holding toward it)
-        if ((state[SDL_SCANCODE_A] && player.left == screenBox.x) ||
-            (state[SDL_SCANCODE_D] && player.right == screenBox.w))
-        {
-            isWallSliding = true;
-            if (vy > 2.0f)
-                vy = 2.0f;
-        }
-        else
-        {
-            isWallSliding = false;
-        }
-
-        // regain jump after sliding on wall for 1.5s
-        if (isWallSliding && jumps == 0)
-        {
-            if (wallSlideStartTime == 0)
-                wallSlideStartTime = SDL_GetTicks();
-
-            if (SDL_GetTicks() - wallSlideStartTime >= 1500)
-            {
-                jumps += 1;
-                wallSlideStartTime = 0;
-            }
-        }
-        else
-        {
-            wallSlideStartTime = 0;
-        }
+        handleWallSlide(player, state, vy, isWallSliding, jumps, wallSlideStartTime, screenBox.x, screenBox.w);
 
         if (caught)
         {
@@ -174,16 +154,50 @@ int SDL_main(int argc, char *argv[])
 
         player.updateEdges();
 
-        hitbox = {player.left, player.top, player.W, player.H};
-        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        hitbox = {player.left, player.top, player.w, player.h};
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderRect(renderer, &hitbox);
 
-        edgeCollision(player, screenBox, collideChecker);
+        stand(player, mouseX, mouseY);
 
-        stand(player, HY, NSP, NEP, HLL, RHAngle, LHAngle, RLAngle, LLAngle, BEP);
+        SDL_SetRenderDrawColor(renderer, 33, 22, 111, 255);
+        // SDL_RenderLine(renderer, player.x, player.NEP, mouseX, mouseY);
+
+        SDL_SetRenderDrawColor(renderer, 132, 255, 153, 255);
+        const float BULLET_SPEED = 15.0f;
+
+        for (auto it = shots.begin(); it != shots.end();)
+        {
+            float dx = it->end.x - it->start.x;
+            float dy = it->end.y - it->start.y;
+            float length = std::sqrt(dx * dx + dy * dy);
+
+            // Normalize direction
+            float dirX = dx / length;
+            float dirY = dy / length;
+
+            // Move bullet forward
+            it->start.x += dirX * BULLET_SPEED;
+            it->start.y += dirY * BULLET_SPEED;
+
+            SDL_RenderPoint(renderer, it->start.x, it->start.y);
+
+            // Remove if out of screen
+            if (it->start.x < screenBox.x || it->start.x > screenBox.w ||
+                it->start.y < screenBox.y || it->start.y > screenBox.h)
+            {
+                it = shots.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
 
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        getHuman(renderer, player, HY, NSP, NEP, HLL, RHAngle, LHAngle, BEP, RLAngle, LLAngle);
+        getHuman(renderer, player);
+
+        weapon.pistol(renderer, player);
 
         SDL_RenderPresent(renderer);
         timer.sleep();

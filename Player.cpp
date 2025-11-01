@@ -1,34 +1,31 @@
-#include "Player.h"
+#include "player.h"
 #include <unordered_map>
 #include <vector>
 #include <cmath>
 
-// cache for circle drawing
 static std::unordered_map<int, std::vector<SDL_FPoint>> circleCache;
-
-// default size constant used by drawing helpers (kept same as original)
-static const float DEFAULT_SIZE_FOR_DRAW = 200.0f;
+static const float DEFAULT_SIZE_FOR_DRAw = 200.0f;
 
 Player::Player(float screenW, float screenH, float gravityValue, float size)
-    : screenWidth(screenW), screenHeight(screenH), H(size), W(size / 2.0f), gravity(gravityValue)
+    : screenWidth(screenW), screenHeight(screenH), h(size), w(size / 2.0f), gravity(gravityValue)
 {
-    X = screenWidth / 2.0f;
-    Y = screenHeight / 2.0f;
+    x = screenWidth / 2.0f;
+    y = screenHeight / 2.0f;
     updateEdges();
 }
 
 void Player::updateEdges()
 {
-    top = Y - H / 2;
-    bottom = Y + H / 2;
-    right = X + W / 2;
-    left = X - W / 2;
+    top = y - h / 2;
+    bottom = y + h / 2;
+    right = x + w / 2;
+    left = x - w / 2;
 }
 
 void Player::setPosition(float x, float y)
 {
-    X = x;
-    Y = y;
+    this->x = x;
+    this->y = y;
     updateEdges();
 }
 
@@ -37,16 +34,12 @@ void Collide::reset()
     collideBottom = collideTop = collideRight = collideLeft = false;
 }
 
-// --- drawing helpers (ported exactly from your original code) ---
-
 void SDL_RenderCircle(SDL_Renderer *renderer, float cx, float cy, float radius)
 {
     int r = static_cast<int>(radius);
-
     if (r <= 0)
         return;
 
-    // build cache if missing
     if (circleCache.find(r) == circleCache.end())
     {
         std::vector<SDL_FPoint> points;
@@ -80,7 +73,7 @@ void SDL_RenderCircle(SDL_Renderer *renderer, float cx, float cy, float radius)
 
 inline void head(SDL_Renderer *r, float x, float y)
 {
-    SDL_RenderCircle(r, x, y, DEFAULT_SIZE_FOR_DRAW / 7.0f);
+    SDL_RenderCircle(r, x, y, DEFAULT_SIZE_FOR_DRAw / 7.0f);
 }
 
 inline void nick(SDL_Renderer *r, float x, float y1, float y2)
@@ -99,27 +92,42 @@ inline void limb(SDL_Renderer *r, float x, float y, float angle, float length, b
     SDL_RenderLine(r, x, y, x2, y + length);
 }
 
-void stand(Player &p, float &HY, float &NSP, float &NEP, float &HLL,
-           float &RHAngle, float &LHAngle, float &RLAngle, float &LLAngle, float &BEP)
+void updateArmAngles(float &mx, float &my, Player &p)
 {
-    HY = p.Y - p.H * 0.35f;  // Head Y center, slightly above middle
-    NSP = HY + p.H * 0.15f;  // Neck start (below head)
-    NEP = NSP + p.H * 0.1f;  // Neck end (joins torso)
-    BEP = NEP + p.H * 0.35f; // Bottom of torso
-    HLL = p.H * 0.2f;        // Limb length proportion (arms & legs)
+    float dx = mx - p.x;
+    float dy = my - p.y;
+    float angle = atan2(dy, dx);
 
-    RHAngle = LHAngle = 45.0f; // Arms angled outward
-    RLAngle = LLAngle = 30.0f; // Legs angled downward
+    cout << angle * 180.0 / M_PI << endl;
+
+    p.RAX = p.x + cos(angle) * p.HL;
+    p.RAY = p.NEP + sin(angle) * p.HL;
+
+    float leftArmAngle = angle + M_PI / 8;
+    p.LAX = p.x + cos(leftArmAngle) * p.HL;
+    p.LAY = p.NEP + sin(leftArmAngle) * p.HL;
 }
 
-void getHuman(SDL_Renderer *r, const Player &p, float HY, float NSP, float NEP, float HLL,
-              float RHAngle, float LHAngle, float BEP, float RLAngle, float LLAngle)
+void stand(Player &p, float &mx, float &my)
 {
-    head(r, p.X, HY);
-    nick(r, p.X, NSP, NEP);
-    limb(r, p.X, NEP, RHAngle, HLL, false);
-    limb(r, p.X, NEP, LHAngle, HLL, true);
-    body(r, p.X, NEP, p.X, BEP);
-    limb(r, p.X, BEP, RLAngle, HLL + 8, false);
-    limb(r, p.X, BEP, LLAngle, HLL + 8, true);
+    p.HY = p.y - p.h * 0.35f;
+    p.NSP = p.HY + p.h * 0.15f;
+    p.NEP = p.NSP + p.h * 0.1f;
+    p.BEP = p.NEP + p.h * 0.35f;
+    p.HL = p.h * 0.2f;
+    p.LA = 30;
+    p.LL = p.HL + 8;
+
+    updateArmAngles(mx, my, p);
+}
+
+void getHuman(SDL_Renderer *r, const Player &p)
+{
+    head(r, p.x, p.HY);
+    nick(r, p.x, p.NSP, p.NEP);
+    limb(r, p.x, p.NEP, p.RAX - p.x, p.RAY - p.NEP, true);
+    limb(r, p.x, p.NEP, p.LAX - p.x, p.LAY - p.NEP, true);
+    body(r, p.x, p.NEP, p.x, p.BEP);
+    limb(r, p.x, p.BEP, p.LA, p.LL, false);
+    limb(r, p.x, p.BEP, p.LA, p.LL, true);
 }

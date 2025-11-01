@@ -14,7 +14,7 @@ void fall(Player &player, float &vy, ThrownDir &dir,
     float remaining = sb.h - (box.y + box.h);
 
     if ((dir.right || dir.left) && !(col.collideLeft || col.collideRight))
-        player.X += vx;
+        player.x += vx;
     else if (col.collideLeft || col.collideRight)
         vx = 0;
 
@@ -26,7 +26,7 @@ void fall(Player &player, float &vy, ThrownDir &dir,
         col.collideBottom = true;
     }
 
-    player.Y += vy;
+    player.y += vy;
 
     if (col.collideBottom)
     {
@@ -56,4 +56,39 @@ void throwDir(Player &player, Uint32 &releaseTime, float &mouseX_after, float &m
 
     checkThrow = false;
     falling = true;
+}
+
+void handleWallSlide(Player &player, const bool *state, float &vy, bool &isWallSliding,
+                     int &jumps, Uint64 &wallSlideStartTime, float screenLeft, float screenRight)
+{
+    // --- Wall slide detection ---
+    if ((state[SDL_SCANCODE_A] && player.left <= screenLeft) ||
+        (state[SDL_SCANCODE_D] && player.right >= screenRight))
+    {
+        isWallSliding = true;
+
+        if (vy > 2.0f)
+            vy = 2.0f; // slow down fall while sliding
+    }
+    else
+    {
+        isWallSliding = false;
+    }
+
+    // --- Regain jump after sliding for 1.5s ---
+    if (isWallSliding && jumps == 0)
+    {
+        if (wallSlideStartTime == 0)
+            wallSlideStartTime = SDL_GetTicks();
+
+        if (SDL_GetTicks() - wallSlideStartTime >= 1500)
+        {
+            jumps += 1;
+            wallSlideStartTime = 0;
+        }
+    }
+    else
+    {
+        wallSlideStartTime = 0;
+    }
 }

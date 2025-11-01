@@ -2,7 +2,7 @@
 #define MOTION_H
 
 #include <SDL3/SDL.h>
-#include "Player.h"
+#include "player.h"
 
 // motion functions now use player.gravity passed from the Player instance
 void fall(Player &player, float &vy, ThrownDir &dir,
@@ -12,5 +12,8 @@ void fall(Player &player, float &vy, ThrownDir &dir,
 void throwDir(Player &player, Uint32 &releaseTime, float &mouseX_after, float &mouseY, float lastX,
               float lastY, ThrownDir &dir, float &vx, float &vy,
               bool &checkThrow, bool &falling);
+
+void handleWallSlide(Player &player, const bool *state, float &vy, bool &isWallSliding, int &jumps,
+                     Uint64 &wallSlideStartTime, float screenLeft, float screenRight);
 
 #endif // MOTION_H
