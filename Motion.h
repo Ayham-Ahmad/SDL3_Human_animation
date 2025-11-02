@@ -5,12 +5,12 @@
 #include "player.h"
 
 // motion functions now use player.gravity passed from the Player instance
-void fall(Player &player, float &vy, ThrownDir &dir,
+void fall(Player &player, float &vy, ThrownDirection &dir,
           Collide &col, bool &falling, float &vx, const SDL_FRect &box,
           const SDL_FRect &sb, int &jumps, const int &JUMP_COUNT);
 
 void throwDir(Player &player, Uint32 &releaseTime, float &mouseX_after, float &mouseY, float lastX,
-              float lastY, ThrownDir &dir, float &vx, float &vy,
+              float lastY, ThrownDirection &dir, float &vx, float &vy,
               bool &checkThrow, bool &falling);
 
 void handleWallSlide(Player &player, const bool *state, float &vy, bool &isWallSliding, int &jumps,

@@ -10,6 +10,7 @@
 #include "Utility.h"
 #include "Motion.h"
 #include "Weapons.h"
+#include "Physics.h"
 
 using namespace std;
 
@@ -20,7 +21,7 @@ const float WALL_GRAB_FORCE = -0.4f;
 const int JUMP_COUNT = 2;
 const float GRAVITY = 0.5f;
 const float SIZE = 200.0f;
-const int BULLET_SPEED = 5;
+const int BULLET_SPEED = 15.0f;
 
 int SDL_main(int argc, char *argv[])
 {
@@ -41,19 +42,23 @@ int SDL_main(int argc, char *argv[])
     Player player(screenWidth, screenHeight, GRAVITY, SIZE);
     SDL_FRect hitbox = {player.left, player.top, player.w, player.h};
 
-    bool running = true, caught = false, falling = true, checkThrowDir = false, isWallSliding = false;
+    bool running = true, caught = false, falling = true, checkThrowDirection = false, isWallSliding = false;
     float mouseX = 0, mouseY = 0, mouseX_after = 0;
     float lastMouseX = player.x, lastMouseY = player.y;
     int jumps = JUMP_COUNT;
+
+    bool isLaunched = false;
 
     float vx = 0.0f, vy = 0.0f;
 
     SDL_Event event;
     SDL_FRect screenBox = {0, 0, (float)screenWidth, (float)screenHeight};
 
-    Collide collideChecker;
-    ThrownDir thrownDir;
+    Collide playerCollide;
+    Collide rockCollide;
+    ThrownDirection thrownDirection;
     Weapon weapon;
+    Physics2D physics;
 
     Uint32 releaseTime = 0;
     Uint64 wallSlideStartTime = 0;
@@ -64,13 +69,45 @@ int SDL_main(int argc, char *argv[])
         SDL_FPoint end;
     };
 
+    struct _initialVelocity
+    {
+        float x;
+        float y;
+    };
+
+    struct _initialPosition
+    {
+        float x;
+        float y;
+    };
+
+    _initialVelocity vel;
+    _initialPosition pos;
+
     vector<Shot> shots;
+
+    Uint64 NOW = SDL_GetPerformanceCounter();
+    Uint64 LAST = 0;
+    double deltaTime = 0;
+    double _time = 0; // <-- total elapsed time you can use later
+
+    SDL_FRect rock;
 
     Timer<60> timer; // 60 FPS limiter
 
     while (running)
     {
         SDL_GetMouseState(&mouseX, &mouseY);
+
+        LAST = NOW;
+        NOW = SDL_GetPerformanceCounter();
+        deltaTime = (double)((NOW - LAST) / (double)SDL_GetPerformanceFrequency()); // milliseconds
+
+        float angle = physics.getVectorDirectionAngle(mouseX, mouseY, player.rightArmXPosition, player.rightArmYPosition);
+        // float magnitude = physics.getVectorMagnitude(mouseX, mouseY, player.x, player.y);
+
+        // float x = physics.getXForVectorUsingAngleAndMagnitude(angle, magnitude);
+        // float y = physics.getYForVectorUsingAngleAndMagnitude(angle, magnitude);
 
         while (SDL_PollEvent(&event))
         {
@@ -100,19 +137,36 @@ int SDL_main(int argc, char *argv[])
                 if (caught)
                     falling = false;
 
-                Shot s;
-                s.start.x = player.x;
-                s.start.y = player.NEP;
-                s.end.x = mouseX;
-                s.end.y = mouseY;
-                shots.push_back(s);
+                if (!isLaunched)
+                {
+                    _time = 0;
+                    isLaunched = true;
+
+                    vel.x = cos(angle * M_PI / 180);
+                    vel.y = sin(angle * M_PI / 180) * 100;
+
+                    pos.x = player.rightArmXPosition;
+                    pos.y = player.rightArmYPosition;
+                }
+
+                // if (shots.size() < weapon.getAmmoCount())
+                // {
+                //     Shot s;
+                //     s.start.x = player.x;
+                //     s.start.y = player.neckEndPoint;
+                //     s.end.x = mouseX;
+                //     s.end.y = mouseY;
+                //     shots.push_back(s);
+
+                //     cout << "new shot" << endl;
+                // }
             }
             else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP && event.button.button == SDL_BUTTON_LEFT)
             {
                 if (caught)
                 {
                     caught = false;
-                    checkThrowDir = true;
+                    checkThrowDirection = true;
                     releaseTime = SDL_GetTicks();
                     lastMouseX = mouseX;
                     lastMouseY = mouseY;
@@ -130,7 +184,9 @@ int SDL_main(int argc, char *argv[])
         // update edges before collision check
         player.updateEdges();
 
-        edgeCollision(player, screenBox, collideChecker);
+        edgeCollision(hitbox, screenBox, playerCollide);
+        if (isLaunched)
+            edgeCollision(rock, screenBox, rockCollide);
 
         handleWallSlide(player, state, vy, isWallSliding, jumps, wallSlideStartTime, screenBox.x, screenBox.w);
 
@@ -140,17 +196,15 @@ int SDL_main(int argc, char *argv[])
             vx = vy = 0;
         }
 
-        if (checkThrowDir)
-            throwDir(player, releaseTime, mouseX_after, mouseY, lastMouseX, lastMouseY, thrownDir, vx, vy, checkThrowDir, falling);
+        if (checkThrowDirection)
+            throwDir(player, releaseTime, mouseX_after, mouseY, lastMouseX, lastMouseY, thrownDirection, vx, vy, checkThrowDirection, falling);
 
         if (falling)
-            fall(player, vy, thrownDir, collideChecker, falling, vx, hitbox, screenBox, jumps, JUMP_COUNT);
+            fall(player, vy, thrownDirection, playerCollide, falling, vx, hitbox, screenBox, jumps, JUMP_COUNT);
 
         // --- Rendering ---
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
         SDL_RenderClear(renderer);
-
-        collideChecker.reset();
 
         player.updateEdges();
 
@@ -158,46 +212,72 @@ int SDL_main(int argc, char *argv[])
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderRect(renderer, &hitbox);
 
-        stand(player, mouseX, mouseY);
+        player.stand(mouseX, mouseY);
 
-        SDL_SetRenderDrawColor(renderer, 33, 22, 111, 255);
-        // SDL_RenderLine(renderer, player.x, player.NEP, mouseX, mouseY);
-
-        SDL_SetRenderDrawColor(renderer, 132, 255, 153, 255);
-        const float BULLET_SPEED = 15.0f;
-
-        for (auto it = shots.begin(); it != shots.end();)
+        if (!isLaunched)
         {
-            float dx = it->end.x - it->start.x;
-            float dy = it->end.y - it->start.y;
-            float length = std::sqrt(dx * dx + dy * dy);
-
-            // Normalize direction
-            float dirX = dx / length;
-            float dirY = dy / length;
-
-            // Move bullet forward
-            it->start.x += dirX * BULLET_SPEED;
-            it->start.y += dirY * BULLET_SPEED;
-
-            SDL_RenderPoint(renderer, it->start.x, it->start.y);
-
-            // Remove if out of screen
-            if (it->start.x < screenBox.x || it->start.x > screenBox.w ||
-                it->start.y < screenBox.y || it->start.y > screenBox.h)
-            {
-                it = shots.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
+            rock = {player.rightArmXPosition, player.rightArmYPosition, 50, 20};
         }
 
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        getHuman(renderer, player);
+        SDL_SetRenderDrawColor(renderer, 33, 22, 111, 255);
+        // SDL_RenderLine(renderer, player.x, player.y, mouseX, mouseY);
 
-        weapon.pistol(renderer, player);
+        SDL_SetRenderDrawColor(renderer, 132, 255, 153, 255);
+
+        // for (auto it = shots.begin(); it != shots.end();)
+        // {
+        //     float dx = it->end.x - it->start.x;
+        //     float dy = it->end.y - it->start.y;
+
+        //     // Get slope direction (like tan)
+        //     float slope = dy / dx;
+
+        //     // Move in X direction
+        //     if (it->end.x > it->start.x)
+        //         it->start.x += BULLET_SPEED;
+        //     else
+        //         it->start.x -= BULLET_SPEED;
+
+        //     // Move Y based on slope
+        //     it->start.y += slope * BULLET_SPEED;
+
+        //     SDL_RenderPoint(renderer, it->start.x, it->start.y);
+
+        //     // Remove if bullet is outside the screen
+        //     if (it->start.x < screenBox.x || it->start.x > screenBox.w ||
+        //         it->start.y < screenBox.y || it->start.y > screenBox.h)
+        //     {
+        //         it = shots.erase(it);
+        //         std::cout << "Removed bullet\n";
+        //     }
+        //     else
+        //     {
+        //         ++it;
+        //     }
+        // }
+
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        player.render(renderer);
+
+        if (!rockCollide.collideBottom && !rockCollide.collideTop)
+        {
+            _time += deltaTime * 15.0f;
+
+            float newRockX = physics.getFinalPosition(0, vel.x, pos.x, _time);
+            float newRockY = physics.getFinalPosition(-9.81, vel.y, pos.y, _time);
+
+            rock = {newRockX, newRockY, 50, 20};
+
+            cout << newRockX << endl;
+            cout << newRockY << endl;
+        }
+        else
+            isLaunched = false;
+
+        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
+        SDL_RenderFillRect(renderer, &rock);
+
+        // weapon.pistol(renderer, player);
 
         SDL_RenderPresent(renderer);
         timer.sleep();
@@ -208,3 +288,7 @@ int SDL_main(int argc, char *argv[])
     SDL_Quit();
     return 0;
 }
+
+
+// still not working for throwing
+// try to make new make to detected collision

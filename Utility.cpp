@@ -37,20 +37,53 @@ float clampf(float value, float minVal, float maxVal)
 }
 
 void drawRotatedRect(SDL_Renderer *r, float cx, float cy, float w, float h, float angleDeg)
+{
+    float angle = angleDeg * (M_PI / 180.0f);
+    float cosA = cos(angle);
+    float sinA = sin(angle);
+
+    SDL_Vertex v[4];
+    v[0].position = {cx + (-w / 2 * cosA - -h / 2 * sinA), cy + (-w / 2 * sinA + -h / 2 * cosA)};
+    v[1].position = {cx + (w / 2 * cosA - -h / 2 * sinA), cy + (w / 2 * sinA + -h / 2 * cosA)};
+    v[2].position = {cx + (w / 2 * cosA - h / 2 * sinA), cy + (w / 2 * sinA + h / 2 * cosA)};
+    v[3].position = {cx + (-w / 2 * cosA - h / 2 * sinA), cy + (-w / 2 * sinA + h / 2 * cosA)};
+
+    for (int i = 0; i < 4; ++i)
+        v[i].color = {255, 255, 255, 255};
+
+    int indices[] = {0, 1, 2, 0, 2, 3};
+    SDL_RenderGeometry(r, nullptr, v, 4, indices, 6);
+}
+
+void edgeCollision(SDL_FRect &obj, const SDL_FRect &bounds, Collide &c)
+{
+    c.reset();
+
+    // Right edge
+    if (obj.x + obj.w > bounds.x + bounds.w)
     {
-        float angle = angleDeg * (M_PI / 180.0f);
-        float cosA = cos(angle);
-        float sinA = sin(angle);
-
-        SDL_Vertex v[4];
-        v[0].position = {cx + (-w / 2 * cosA - -h / 2 * sinA), cy + (-w / 2 * sinA + -h / 2 * cosA)};
-        v[1].position = {cx + (w / 2 * cosA - -h / 2 * sinA), cy + (w / 2 * sinA + -h / 2 * cosA)};
-        v[2].position = {cx + (w / 2 * cosA - h / 2 * sinA), cy + (w / 2 * sinA + h / 2 * cosA)};
-        v[3].position = {cx + (-w / 2 * cosA - h / 2 * sinA), cy + (-w / 2 * sinA + h / 2 * cosA)};
-
-        for (int i = 0; i < 4; ++i)
-            v[i].color = {255, 255, 255, 255};
-
-        int indices[] = {0, 1, 2, 0, 2, 3};
-        SDL_RenderGeometry(r, nullptr, v, 4, indices, 6);
+        obj.x = bounds.x + bounds.w - obj.w;
+        c.collideRight = true;
     }
+
+    // Left edge
+    if (obj.x < bounds.x)
+    {
+        obj.x = bounds.x;
+        c.collideLeft = true;
+    }
+
+    // Top edge
+    if (obj.y < bounds.y)
+    {
+        obj.y = bounds.y;
+        c.collideTop = true;
+    }
+
+    // Bottom edge
+    if (obj.y + obj.h > bounds.y + bounds.h)
+    {
+        obj.y = bounds.y + bounds.h - obj.h;
+        c.collideBottom = true;
+    }
+}

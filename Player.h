@@ -1,42 +1,14 @@
-#ifndef PLAYER_H
-#define PLAYER_H
-
+#pragma once
 #include <SDL3/SDL.h>
-#include <iostream>
+#include <unordered_map>
+#include <vector>
+#include <cmath>
 
-#define M_PI 3.14159265358979323846
+#include "Physics.h"
 
 using namespace std;
 
-class Player
-{
-public:
-    float screenWidth;
-    float screenHeight;
-
-    float x, y;
-    float h, w;
-    float top, bottom, right, left;
-
-    float gravity;
-
-    float HY;  // Head Y
-    float NSP; // Neck start point
-    float NEP; // Neck end point
-    float HL;  // Hand length
-    float RAX; // Right Arm X
-    float RAY; // Right Arm Y
-    float LAX; // Left Arm X
-    float LAY; // Left Arm Y
-    float BEP; // Body end point
-    float LA;  // Legs angle
-    float LL;  // Legs Length
-
-    Player(float screenW, float screenH, float gravityValue = 0.5f, float size = 200.0f);
-
-    void updateEdges();
-    void setPosition(float x, float y);
-};
+#define M_PI 3.14159265358979323846
 
 class Collide
 {
@@ -49,23 +21,53 @@ public:
     void reset();
 };
 
-class ThrownDir
+class ThrownDirection
 {
 public:
     bool right = false;
     bool left = false;
 };
 
-void SDL_RenderCircle(SDL_Renderer *renderer, float cx, float cy, float radius);
-void head(SDL_Renderer *r, float x, float y);
-void nick(SDL_Renderer *r, float x, float y1, float y2);
-void body(SDL_Renderer *renderer, float x1, float y1, float x2, float y2);
-void limb(SDL_Renderer *r, float x, float y, float angle, float length, bool rightSide);
+class Player
+{
+public:
+    Player(float screenW, float screenH, float gravityValue, float size);
 
-void stand(Player &p, float &mx, float &my);
+    void setPosition(float x, float y);
+    void updateEdges();
+    void stand(float mx, float my);
+    void updateArmAngles(float mx, float my);
+    void render(SDL_Renderer *r);
 
-void getHuman(SDL_Renderer *r, const Player &p);
+private:
+    // internal drawing helpers
+    void renderHead(SDL_Renderer *r);
+    void renderNeck(SDL_Renderer *r);
+    void renderBody(SDL_Renderer *r);
+    void renderLimb(SDL_Renderer *r, float baseX, float baseY, float angle, float length, bool rightSide);
 
-void updateArmAngles(float &mx, float &my, Player &p);
+private:
+    float screenWidth;
+    float screenHeight;
 
-#endif // PLAYER_H
+    Physics2D _apply2DPhysics;
+
+public:
+    float x, y;    // center position
+    float w, h;    // width, height
+    float gravity; // gravity value
+    float top, bottom, left, right;
+
+    // Body parts
+    float headYPosition;
+    float neckStartPoint;
+    float neckEndPoint;
+    float bodyYEndPoint;
+
+    // Arms & legs
+    float rightArmXPosition, rightArmYPosition;
+    float leftArmXPosition, leftArmYPosition;
+    float armLength;
+    float legsAngle;
+    float legsLength;
+};

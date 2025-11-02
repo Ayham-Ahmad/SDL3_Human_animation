@@ -6,7 +6,7 @@
 static const float MAX_VERTICAL_FORCE = 20.0f;
 static const float MAX_HORIZONTAL_FORCE = 20.0f;
 
-void fall(Player &player, float &vy, ThrownDir &dir,
+void fall(Player &player, float &vy, ThrownDirection &dir,
           Collide &col, bool &falling, float &vx, const SDL_FRect &box,
           const SDL_FRect &sb, int &jumps, const int &JUMP_COUNT)
 {
@@ -33,12 +33,12 @@ void fall(Player &player, float &vy, ThrownDir &dir,
         falling = false;
         jumps = JUMP_COUNT;
         vy = vx = 0;
-        dir = ThrownDir();
+        dir = ThrownDirection();
     }
 }
 
 void throwDir(Player &player, Uint32 &releaseTime, float &mouseX_after, float &mouseY, float lastX,
-              float lastY, ThrownDir &dir, float &vx, float &vy,
+              float lastY, ThrownDirection &dir, float &vx, float &vy,
               bool &checkThrow, bool &falling)
 {
     if (SDL_GetTicks() - releaseTime < 10)
