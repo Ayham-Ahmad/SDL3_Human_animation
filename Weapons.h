@@ -3,7 +3,6 @@
 
 #include <SDL3/SDL.h>
 #include <cmath>
-#include <iostream>
 #include "Player.h"
 #include "Utility.h"
 

@@ -1,12 +1,11 @@
 #ifndef PHYSICS_H
 #define PHYSICS_H
 
-#include <iostream>
 #include <cmath>
 
 using namespace std;
 
-#define M_PI 3.14159265358979323846
+const double PI = 3.14159265358979323846;
 
 class Physics2D
 {
@@ -46,7 +45,7 @@ public:
 
         if (convertRadianToAngle)
         {
-            float degrees = angle * 180.0f / M_PI;
+            float degrees = angle * 180.0f / PI;
 
             if (degrees < 0)
                 degrees += 360.0f;

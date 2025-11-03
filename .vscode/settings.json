@@ -68,7 +68,7 @@
         "BCPH",
         "BCPW",
         "clampf",
-        "hitbox",
+        "playerHitBox",
         "Lhand",
         "Rhand",
         "screensb",

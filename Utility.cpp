@@ -7,30 +7,6 @@ bool isCaught(float mx, float my, SDL_FRect box)
             my >= box.y && my <= box.y + box.h);
 }
 
-void edgeCollision(Player &p, const SDL_FRect &sb, Collide &c)
-{
-    if (p.right > sb.w)
-    {
-        p.x = sb.w - p.w / 2.0f;
-        c.collideRight = true;
-    }
-    if (p.left < sb.x)
-    {
-        p.x = p.w / 2.0f;
-        c.collideLeft = true;
-    }
-    if (p.top < sb.y)
-    {
-        p.y = p.h;
-        c.collideTop = true;
-    }
-    if (p.bottom > sb.h)
-    {
-        p.y = sb.h - p.h;
-        c.collideBottom = true;
-    }
-}
-
 float clampf(float value, float minVal, float maxVal)
 {
     return (value < minVal) ? minVal : (value > maxVal ? maxVal : value);
@@ -38,7 +14,7 @@ float clampf(float value, float minVal, float maxVal)
 
 void drawRotatedRect(SDL_Renderer *r, float cx, float cy, float w, float h, float angleDeg)
 {
-    float angle = angleDeg * (M_PI / 180.0f);
+    float angle = angleDeg * (PI / 180.0f);
     float cosA = cos(angle);
     float sinA = sin(angle);
 
@@ -55,35 +31,4 @@ void drawRotatedRect(SDL_Renderer *r, float cx, float cy, float w, float h, floa
     SDL_RenderGeometry(r, nullptr, v, 4, indices, 6);
 }
 
-void edgeCollision(SDL_FRect &obj, const SDL_FRect &bounds, Collide &c)
-{
-    c.reset();
-
-    // Right edge
-    if (obj.x + obj.w > bounds.x + bounds.w)
-    {
-        obj.x = bounds.x + bounds.w - obj.w;
-        c.collideRight = true;
-    }
-
-    // Left edge
-    if (obj.x < bounds.x)
-    {
-        obj.x = bounds.x;
-        c.collideLeft = true;
-    }
-
-    // Top edge
-    if (obj.y < bounds.y)
-    {
-        obj.y = bounds.y;
-        c.collideTop = true;
-    }
-
-    // Bottom edge
-    if (obj.y + obj.h > bounds.y + bounds.h)
-    {
-        obj.y = bounds.y + bounds.h - obj.h;
-        c.collideBottom = true;
-    }
-}
+// void edgeCollision(SDL_FRect &obj, const SDL_FRect &bounds, Collide &c)

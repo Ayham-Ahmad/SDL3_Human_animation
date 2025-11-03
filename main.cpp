@@ -1,4 +1,5 @@
 #include <SDL3/SDL_main.h>
+#include <vector>
 #include "Game.h"
 
 int SDL_main(int argc, char *argv[])
@@ -19,12 +20,16 @@ int SDL_main(int argc, char *argv[])
     const int screenWidth = mode->w;
     const int screenHeight = mode->h;
 
-    game.player = Player(screenWidth, screenHeight, GRAVITY, SIZE);
-    game.hitbox = {game.player.left, game.player.top, game.player.w, game.player.h};
+    game.player = Player(screenWidth, screenHeight);
+    game.playerHitBox = {game.player.left, game.player.top, game.player.playerStatus.width, game.player.playerStatus.height};
     game.screenBox = {0, 0, (float)screenWidth, (float)screenHeight};
 
-    game.lastMouseX = game.player.x;
-    game.lastMouseY = game.player.y;
+    game.lastMouseX = game.player.playerStatus.x0;
+    game.lastMouseY = game.player.playerStatus.y0;
+
+    // Object player;
+    // Physics2D applyPhysics;
+    // SDL_FRect playerRect;
 
     while (game.running)
     {
@@ -34,9 +39,34 @@ int SDL_main(int argc, char *argv[])
         game.NOW = SDL_GetPerformanceCounter();
         game.deltaTime = (double)((game.NOW - game.LAST) / (double)SDL_GetPerformanceFrequency());
 
+        // if (!player.collide.collideBottom)
+        //     player.totalTime += game.deltaTime;
+        // else
+        // {
+        //     player.x = playerRect.x;
+        //     player.y = playerRect.y;
+        // }
+
         game.handleInput();
         game.update();
         game.render();
+
+        // print(player.x, player.y, playerRect.x, playerRect.y, player.totalTime);
+
+        // player.x = applyPhysics.getFinalPosition(0, player.vx0, player.x0, player.totalTime);
+        // player.y = applyPhysics.getFinalPosition(GRAVITY, player.vy0, player.y0, player.totalTime);
+
+        // player.collide.edgeCollision(player, game.screenBox);
+
+        // playerRect = {player.x, player.y, player.width, player.height};
+
+        // SDL_SetRenderDrawColor(game.renderer, 0, 0, 0, 0);
+        // SDL_RenderClear(game.renderer);
+
+        // SDL_SetRenderDrawColor(game.renderer, 128, 128, 128, 255);
+        // SDL_RenderFillRect(game.renderer, &playerRect);
+
+        // SDL_RenderPresent(game.renderer);
 
         game.timer.sleep();
     }

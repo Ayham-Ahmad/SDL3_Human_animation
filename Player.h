@@ -5,39 +5,17 @@
 #include <cmath>
 
 #include "Physics.h"
-
-using namespace std;
-
-#define M_PI 3.14159265358979323846
-
-class Collide
-{
-public:
-    bool collideBottom = false;
-    bool collideTop = false;
-    bool collideRight = false;
-    bool collideLeft = false;
-
-    void reset();
-};
-
-class ThrownDirection
-{
-public:
-    bool right = false;
-    bool left = false;
-};
+#include "Object.h"
 
 class Player
 {
 public:
-    Player(float screenW, float screenH, float gravityValue, float size);
+    Player(float screenW, float screenH);
 
-    void setPosition(float x, float y);
-    void updateEdges();
+    void update();
     void stand(float mx, float my);
     void updateArmAngles(float mx, float my);
-    void render(SDL_Renderer *r);
+    void renderPlayerParts(SDL_Renderer *r);
 
 private:
     // internal drawing helpers
@@ -53,11 +31,11 @@ private:
     Physics2D _apply2DPhysics;
 
 public:
-    float x, y;    // center position
-    float w, h;    // width, height
-    float gravity; // gravity value
+    Object playerStatus;
+
     float top, bottom, left, right;
 
+// private:
     // Body parts
     float headYPosition;
     float neckStartPoint;

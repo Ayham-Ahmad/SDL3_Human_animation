@@ -1,14 +1,10 @@
 #include "Player.h"
+#include "Game.h"
 #include <cmath>
 #include <unordered_map>
 #include <vector>
 
 static std::unordered_map<int, std::vector<SDL_FPoint>> circleCache;
-
-void Collide::reset()
-{
-    collideBottom = collideTop = collideRight = collideLeft = false;
-}
 
 // ---------------------------
 // Generic helper (outside Player)
@@ -54,54 +50,52 @@ void SDL_RenderCircle(SDL_Renderer *renderer, float cx, float cy, float radius)
 // Player methods
 // ---------------------------
 
-Player::Player(float screenW, float screenH, float gravityValue, float size)
-    : screenWidth(screenW), screenHeight(screenH), h(size), w(size / 2.0f), gravity(gravityValue)
+Player::Player(float screenW, float screenH)
+    : screenWidth(screenW), screenHeight(screenH)
 {
-    x = screenWidth / 2.0f;
-    y = screenHeight / 2.0f;
-    updateEdges();
+    playerStatus.x0 = screenWidth / 2.0f;
+    playerStatus.y0 = screenHeight / 2.0f;
+
+    playerStatus.height = SIZE;
+    playerStatus.width = SIZE / 2;
+
+    update();
 }
 
-void Player::updateEdges()
+void Player::update()
 {
-    top = y - h / 2;
-    bottom = y + h / 2;
-    right = x + w / 2;
-    left = x - w / 2;
-}
-
-void Player::setPosition(float x, float y)
-{
-    this->x = x;
-    this->y = y;
-    updateEdges();
+    top = playerStatus.y - playerStatus.height / 2;
+    bottom = playerStatus.y + playerStatus.height / 2;
+    right = playerStatus.x + playerStatus.width / 2;
+    left = playerStatus.x - playerStatus.width / 2;
 }
 
 void Player::stand(float mx, float my)
 {
-    headYPosition = y - h * 0.35f;
-    neckStartPoint = headYPosition + h * 0.15f;
-    neckEndPoint = neckStartPoint + h * 0.1f;
-    bodyYEndPoint = neckEndPoint + h * 0.35f;
-    armLength = h * 0.2f;
+    headYPosition = playerStatus.y - playerStatus.height * 0.35f;
+    neckStartPoint = headYPosition + playerStatus.height * 0.15f;
+    neckEndPoint = neckStartPoint + playerStatus.height * 0.1f;
+    bodyYEndPoint = neckEndPoint + playerStatus.height * 0.35f;
+    armLength = playerStatus.height * 0.2f;
     legsAngle = 30;
     legsLength = armLength + 8;
+
     updateArmAngles(mx, my);
 }
 
 void Player::updateArmAngles(float mx, float my)
 {
     // Get base angle toward the mouse
-    float angle = _apply2DPhysics.getVectorDirectionAngle(mx, my, x, neckEndPoint);
+    float angle = _apply2DPhysics.getVectorDirectionAngle(mx, my, playerStatus.x, neckEndPoint);
 
     // Right arm directly points toward the mouse
-    rightArmXPosition = _apply2DPhysics.getXForVectorUsingAngleAndMagnitude(angle, armLength, x);
+    rightArmXPosition = _apply2DPhysics.getXForVectorUsingAngleAndMagnitude(angle, armLength, playerStatus.x);
     rightArmYPosition = _apply2DPhysics.getYForVectorUsingAngleAndMagnitude(angle, armLength, neckEndPoint);
 
     // Left arm: slightly offset by ±15 degrees
-    float leftArmAngle = angle + (15.0f * M_PI / 180.0f);
+    float leftArmAngle = angle + (15.0f * PI / 180.0f);
 
-    leftArmXPosition = _apply2DPhysics.getXForVectorUsingAngleAndMagnitude(leftArmAngle, armLength, x);
+    leftArmXPosition = _apply2DPhysics.getXForVectorUsingAngleAndMagnitude(leftArmAngle, armLength, playerStatus.x);
     leftArmYPosition = _apply2DPhysics.getYForVectorUsingAngleAndMagnitude(leftArmAngle, armLength, neckEndPoint);
 }
 
@@ -111,17 +105,17 @@ void Player::updateArmAngles(float mx, float my)
 
 void Player::renderHead(SDL_Renderer *r)
 {
-    SDL_RenderCircle(r, x, headYPosition, h / 7.0f);
+    SDL_RenderCircle(r, playerStatus.x, headYPosition, SIZE / 7.0f);
 }
 
 void Player::renderNeck(SDL_Renderer *r)
 {
-    SDL_RenderLine(r, x, neckStartPoint, x, neckEndPoint);
+    SDL_RenderLine(r, playerStatus.x, neckStartPoint, playerStatus.x, neckEndPoint);
 }
 
 void Player::renderBody(SDL_Renderer *r)
 {
-    SDL_RenderLine(r, x, neckEndPoint, x, bodyYEndPoint);
+    SDL_RenderLine(r, playerStatus.x, neckEndPoint, playerStatus.x, bodyYEndPoint);
 }
 
 void Player::renderLimb(SDL_Renderer *r, float baseX, float baseY, float angle, float length, bool rightSide)
@@ -130,15 +124,15 @@ void Player::renderLimb(SDL_Renderer *r, float baseX, float baseY, float angle, 
     SDL_RenderLine(r, baseX, baseY, x2, baseY + length);
 }
 
-void Player::render(SDL_Renderer *r)
+void Player::renderPlayerParts(SDL_Renderer *r)
 {
     renderHead(r);
     renderNeck(r);
     renderBody(r);
 
-    renderLimb(r, x, neckEndPoint, rightArmXPosition - x, rightArmYPosition - neckEndPoint, true);
-    renderLimb(r, x, neckEndPoint, leftArmXPosition - x, leftArmYPosition - neckEndPoint, true);
+    renderLimb(r, playerStatus.x, neckEndPoint, rightArmXPosition - playerStatus.x, rightArmYPosition - neckEndPoint, true);
+    renderLimb(r, playerStatus.x, neckEndPoint, leftArmXPosition - playerStatus.x, leftArmYPosition - neckEndPoint, true);
 
-    renderLimb(r, x, bodyYEndPoint, legsAngle, legsLength, false);
-    renderLimb(r, x, bodyYEndPoint, legsAngle, legsLength, true);
+    renderLimb(r, playerStatus.x, bodyYEndPoint, legsAngle, legsLength, false);
+    renderLimb(r, playerStatus.x, bodyYEndPoint, legsAngle, legsLength, true);
 }

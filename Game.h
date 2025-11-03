@@ -5,8 +5,12 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+
+struct Object;
+class Collide;
+
 #include "FPSTimer.h"
-#include "player.h"
+#include "Player.h"
 #include "Utility.h"
 #include "Motion.h"
 #include "Weapons.h"
@@ -14,40 +18,21 @@
 
 using namespace std;
 
-#define M_PI 3.14159265358979323846
-
 // Constants
-const float moveSpeed = 10.0f;
+const float PIXELS_PER_METER = 100.0f;
+const float GRAVITY = 9.8f * PIXELS_PER_METER;
+const float MOVEMENT_SPEED = 10.0f;
 const float WALL_GRAB_FORCE = -0.4f;
 const int JUMP_COUNT = 2;
-const float GRAVITY = 0.5f;
-const float SIZE = 200.0f;
+const float SIZE = 100.0f;
 const int BULLET_SPEED = 15.0f;
-
-// Structs
-struct Shot
-{
-    SDL_FPoint start;
-    SDL_FPoint end;
-};
-
-struct _initialVelocity
-{
-    float x;
-    float y;
-};
-
-struct _initialPosition
-{
-    float x;
-    float y;
-};
 
 // Game class
 class Game
 {
 
 private:
+    // To calculate frames
     double _fpsTimer = 0;
     int _fpsCounter = 0;
     float _currentFPS = 0;
@@ -56,24 +41,22 @@ public:
     // SDL objects
     SDL_Window *window;
     SDL_Renderer *renderer;
-    SDL_FRect hitbox;
+    SDL_FRect playerHitBox;
     SDL_FRect screenBox;
     SDL_Event event;
 
     // Player & physics
     Player player;
-    Collide playerCollide;
-    Collide rockCollide;
-    ThrownDirection thrownDirection;
+    // ThrownDirection thrownDirection;
     Weapon weapon;
-    Physics2D physics;
+    Physics2D applyPhysics;
+    Object rockStatus;
 
     // Game state
-    bool running, caught, falling, checkThrowDirection, isWallSliding;
+    bool running, falling, checkThrowDirection, isWallSliding;
     bool isLaunched;
     float mouseX, mouseY, mouseX_after;
     float lastMouseX, lastMouseY;
-    float vx, vy;
     int jumps;
     Uint32 releaseTime;
     Uint64 wallSlideStartTime;
@@ -81,10 +64,8 @@ public:
     double deltaTime;
     double _time;
 
-    vector<Shot> shots;
+    // vector<Shot> shots;
     SDL_FRect rock;
-    _initialVelocity vel;
-    _initialPosition pos;
 
     Timer<60> timer; // 60 FPS limiter
 
@@ -98,5 +79,19 @@ public:
 
     float getFramesPerSecond(double deltaTime);
 };
+
+// Printing
+template <typename T>
+void print(const T &value)
+{
+    cout << value << endl;
+}
+
+template <typename T, typename... Args>
+void print(const T &first, const Args &...rest)
+{
+    cout << first << " ";
+    print(rest...);
+}
 
 #endif // GAME_H
