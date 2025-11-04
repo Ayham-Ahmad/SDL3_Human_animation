@@ -68,9 +68,10 @@
         "BCPH",
         "BCPW",
         "clampf",
-        "playerHitBox",
         "Lhand",
+        "playerHitBox",
         "Rhand",
+        "Roboto",
         "screensb",
         "SDLK"
     ]

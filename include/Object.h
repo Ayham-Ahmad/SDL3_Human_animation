@@ -1,7 +1,6 @@
 #pragma once
 #include <SDL3/SDL.h>
 
-// Forward declaration so Collide can take an Object& parameter
 struct Object;
 
 class Collide
@@ -21,7 +20,6 @@ public:
     void edgeCollision(Object &obj, const SDL_FRect &bounds);
 };
 
-// ---- Definition of Object ----
 struct Object
 {
     float x0 = 0.0f;  // initial x position
@@ -46,7 +44,6 @@ struct Object
     Collide collide;
 };
 
-// ---- Implement Collide::edgeCollision after Object is defined ----
 inline void Collide::edgeCollision(Object &obj, const SDL_FRect &bounds)
 {
     reset();

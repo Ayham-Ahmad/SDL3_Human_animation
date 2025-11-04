@@ -1,9 +1,6 @@
-#ifndef PHYSICS_H
-#define PHYSICS_H
-
+#pragma once
 #include <cmath>
-
-using namespace std;
+#include <algorithm>
 
 const double PI = 3.14159265358979323846;
 
@@ -27,7 +24,7 @@ public:
         float t2 = (-v - sqrt(discriminant)) / a;
 
         if (t1 >= 0 && t2 >= 0)
-            return min(t1, t2);
+            return std::min(t1, t2);
         else if (t1 >= 0)
             return t1;
         else
@@ -75,5 +72,3 @@ public:
         return magnitude * sin(angle) + additionalValue;
     }
 };
-
-#endif // PHYSICS_H
