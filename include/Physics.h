@@ -2,7 +2,8 @@
 #include <cmath>
 #include <algorithm>
 
-const double PI = 3.14159265358979323846;
+#include "Object.h"
+#include "Globals.h"
 
 class Physics2D
 {
@@ -71,4 +72,15 @@ public:
     {
         return magnitude * sin(angle) + additionalValue;
     }
+
+    void updatePositionXBasedOnVXAndDeltaTime(Object &obj)
+    {
+        obj.x += obj.vx * deltaTime;
+    }
+
+    void updatePositionYBasedOnVYAndDeltaTime(Object &obj)
+    {
+        obj.y += obj.vy * deltaTime;
+    }
+
 };

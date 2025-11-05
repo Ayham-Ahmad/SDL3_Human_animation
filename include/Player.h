@@ -1,28 +1,40 @@
 #pragma once
 #include <SDL3/SDL.h>
+#include <cmath>
 
 #include "Utility.h"
 #include "Physics.h"
 #include "Object.h"
+#include "Globals.h"
 
 class Player
 {
 public:
-    Object _playerPhysics;
+    Object _Rigidbody;
     Physics2D _applyPhysics;
 
 public:
-    Player(const float screenW, const float screenH, const int SIZE);
+    Player(const float screenW, const float screenH);
     Player() {}
 
-    void update(const float mx, const float my, const double deltaTime, const double GRAVITY, const int JUMP_COUNT, SDL_FRect screenBox);
-    void stand(float mx, float my);
+    // Control
+    void jump();
+    void handleHorizontalMovement(const bool *state);
+
+    // uplate
+    void update(const float mx, const float my, SDL_FRect screenBox);
+    void _updateStandingState();
     void renderPlayerParts(SDL_Renderer *r);
 
 private:
     void _updateArmAngles(float mx, float my);
+    void _updateHitboxFromRigidbody();
+    void _syncRigidbodyWithHitbox();
+    void _handleCollisionResponse();
+    void _updateHitboxEdges();
+    void _handleWallSlide();
 
-    // internal drawing helpers
+    // Body drawing helpers
     void _renderHead(SDL_Renderer *r);
     void _renderNeck(SDL_Renderer *r);
     void _renderBody(SDL_Renderer *r);
@@ -34,15 +46,15 @@ private:
     float mouseX;
     float mouseY;
 
-    int _SIZE;
+    int _jumps;
+
+    bool _inAir = false;
 
 public:
     float top, bottom, left, right;
 
-    int jumps;
-
     SDL_FRect playerHitBox;
-    Object playerHitBoxObj;
+    Object playerHitBoxRigidbody;
 
     // Body parts
     float headYPosition;

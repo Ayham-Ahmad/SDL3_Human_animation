@@ -6,14 +6,8 @@
 #include "FPSTimer.h"
 #include "Text.h"
 #include "Physics.h"
-#include "string"
-
-const float PIXELS_PER_METER = 100.0f;
-const float GRAVITY = 9.8f * PIXELS_PER_METER;
-const float SIZE = 100.0f;
-const int JUMP_COUNT = 2;
-const float MOVEMENT_SPEED = 10.0f;
-const float WALL_GRAB_FORCE = -0.4f;
+#include <string>
+#include "Globals.h"
 
 class Game
 {
@@ -45,11 +39,12 @@ private:
     // Game Objects
     Player _player;
 
+    // Test
     Object _test;
     SDL_FRect _testRect;
 
-    Physics2D applyPhysics;
-    SDL_FRect screenBox;
+    Physics2D _applyPhysics;
+    SDL_FRect _screenBox;
 
     // Screen Dimensions
     int _screenWidth;
@@ -60,7 +55,6 @@ public:
     bool running = true;
 
     Uint64 NOW, LAST;
-    double deltaTime;
     float mouseX, mouseY;
 
     // --- FPS system ---

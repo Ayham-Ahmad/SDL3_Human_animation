@@ -23,13 +23,13 @@ void Game::init()
     _screenWidth = mode->w;
     _screenHeight = mode->h;
 
-    _player = Player(_screenWidth, _screenHeight, SIZE);
+    _player = Player(_screenWidth, _screenHeight);
 
     // Create window and renderer
     window = SDL_CreateWindow("Human", _screenWidth, _screenHeight, SDL_WINDOW_FULLSCREEN);
     renderer = SDL_CreateRenderer(window, nullptr);
 
-    screenBox = {0, 0, (float)_screenWidth, (float)_screenHeight};
+    _screenBox = {0, 0, (float)_screenWidth, (float)_screenHeight};
 
     // Center test rectangle
     _test.x0 = _screenWidth / 3.0f;
@@ -83,6 +83,7 @@ void Game::handleInput()
 {
     while (SDL_PollEvent(&_e))
     {
+        // Close window
         if (_e.type == SDL_EVENT_QUIT)
             running = false;
         else if (_e.type == SDL_EVENT_KEY_DOWN)
@@ -94,26 +95,16 @@ void Game::handleInput()
                 running = false;
 
             // Jumping
-            else if (sc == SDL_SCANCODE_SPACE && _player.jumps != 0)
+            else if (sc == SDL_SCANCODE_SPACE)
             {
-                if (_player.jumps <= JUMP_COUNT)
-                {
-                    _player._playerPhysics.vy = -12.0f;
-                    _player.jumps -= 1;
-
-                    print("vy: ", _player._playerPhysics.vy);
-                    print("jumps: ", _player.jumps);
-                }
+                _player.jump();
             }
         }
     }
 
-    const bool *state = SDL_GetKeyboardState(NULL);
+    const bool *state = SDL_GetKeyboardState(NULL); // For continuos pressing
 
-    if (state[SDL_SCANCODE_A])
-        _player._playerPhysics.x -= MOVEMENT_SPEED;
-    if (state[SDL_SCANCODE_D])
-        _player._playerPhysics.x += MOVEMENT_SPEED;
+    _player.handleHorizontalMovement(state); // Move the player left and right
 }
 
 // --- update: only game state changes ---
@@ -122,13 +113,23 @@ void Game::update()
     if (!_test.collide.collide)
     {
         _test.totalTime += deltaTime;
-        _test.x = applyPhysics.getFinalPosition(0, _test.vx0, _test.x0, _test.totalTime);
-        _test.y = applyPhysics.getFinalPosition(GRAVITY, _test.vy0, _test.y0, _test.totalTime);
-        _test.collide.edgeCollision(_test, screenBox);
+        _test.x = _applyPhysics.getFinalPosition(0, _test.vx0, _test.x0, _test.totalTime);
+        _test.y = _applyPhysics.getFinalPosition(GRAVITY, _test.vy0, _test.y0, _test.totalTime);
+        _test.collide.edgeCollision(_test, _screenBox);
         // print("vx:", _test.vx, " vy:", _test.vy, " x:", _test.x, " y:", _test.y, " totalTime:", _test.totalTime);
     }
 
-    _player.update(mouseX, mouseY, deltaTime, GRAVITY, JUMP_COUNT, screenBox);
+    _player.update(mouseX, mouseY, _screenBox);
+
+    if (SDL_HasRectIntersectionFloat(&_player.playerHitBox, &_testRect))
+    {
+        print("Collision detected!");
+        _player.jump();
+        }
+    else
+    {
+        printf("No collision.\n");
+    }
 
     _updateFPS();
 }
@@ -138,26 +139,18 @@ void Game::render()
 {
     _clear({0, 0, 0, 255});
 
+    // Test
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     _testRect = {_test.x, _test.y, _test.width, _test.height};
     SDL_RenderFillRect(renderer, &_testRect);
+    showXAndYPosition(renderer, _test.x, _test.y);
 
-    drawText(
-        renderer,
-        "(" + std::to_string(static_cast<int>(_test.x)) + ", " +
-            std::to_string(static_cast<int>(_test.y)) + ")",
-        _test.x - 10, _test.y - 20, 10);
-
+    // Player
     _player.renderPlayerParts(renderer);
+    showXAndYPosition(renderer, _player._Rigidbody.x, _player.top, -20);
 
-    drawText(
-        renderer,
-        "(" + std::to_string(static_cast<int>(_player._playerPhysics.x)) + ", " +
-            std::to_string(static_cast<int>(_player.top)) + ")",
-        _player._playerPhysics.x - 10, _player.top - 20, 10);
-
-    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-    SDL_RenderRect(renderer, &_player.playerHitBox);
+    // SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+    // SDL_RenderRect(renderer, &_player.playerHitBox);
 
     _showFPS();
 

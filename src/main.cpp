@@ -1,11 +1,13 @@
 #include "Game.h"
 
+double deltaTime = 0.0;
+
 int main()
 {
     Game game;
     game.init();
 
-    game.NOW = SDL_GetPerformanceCounter(); 
+    game.NOW = SDL_GetPerformanceCounter();
 
     while (game.running)
     {
@@ -13,7 +15,7 @@ int main()
 
         game.LAST = game.NOW;
         game.NOW = SDL_GetPerformanceCounter();
-        game.deltaTime = (double)((game.NOW - game.LAST) / (double)SDL_GetPerformanceFrequency());
+        deltaTime = (double)((game.NOW - game.LAST) / (double)SDL_GetPerformanceFrequency());
 
         game.handleInput();
         game.update();
